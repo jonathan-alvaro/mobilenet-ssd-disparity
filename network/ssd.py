@@ -2,12 +2,12 @@ from typing import List
 
 import torch
 import torch.nn as nn
-
-from mobilenet import MobileNet
+from .mobilenet import MobileNet
 
 
 class SSD(nn.Module):
-    def __init__(self, num_classes: int, source_layer_indices: List[int], extractor: MobileNet, location_headers: nn.ModuleList, class_headers: nn.ModuleList):
+    def __init__(self, num_classes: int, source_layer_indices: List[int], extractor: MobileNet,
+                 location_headers: nn.ModuleList, class_headers: nn.ModuleList):
         super().__init__()
 
         self.num_classes = num_classes
@@ -25,7 +25,7 @@ class SSD(nn.Module):
         for feature_index, feature_layer in enumerate(self.source_layers):
             for net_layer in self.extractor[start_layer:feature_layer]:
                 x = net_layer(x)
-                
+
                 confidence = self.compute_confidence(x, feature_index)
                 confidences.append(confidence)
 
