@@ -13,7 +13,7 @@ class MobileNet(nn.Module):
                 nn.BatchNorm2d(out_channels),
                 nn.ReLU(inplace=True)
             )
-        
+
         def dw_conv(in_channels, out_channels, stride):
             return nn.Sequential(
                 nn.Conv2d(in_channels, in_channels, 3, stride, 1, bias=False, groups=in_channels),
@@ -23,7 +23,7 @@ class MobileNet(nn.Module):
                 nn.BatchNorm2d(out_channels),
                 nn.ReLU(inplace=True)
             )
-        
+
         self.model = nn.Sequential(
             bn_conv(3, 32, 2),
             dw_conv(32, 64, 1),
@@ -41,11 +41,14 @@ class MobileNet(nn.Module):
             dw_conv(1024, 1024, 1),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.model(x)
         x = F.avg_pool2d(x, 7)
         x = x.view(-1, 1024)
         return x
 
-    def load(self, path):
+    def load(self, path: str):
         self.model.load_state_dict(torch.load(path))
+
+    def get_layers(self) -> nn.Sequential:
+        return self.model
