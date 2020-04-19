@@ -109,3 +109,26 @@ def hard_negative_mining(loss: torch.Tensor, labels: torch.Tensor, ratio: float)
     _, orders = indices.sort(dim=1)
     neg_mask = orders < num_neg
     return pos_mask | neg_mask
+
+
+def nms(boxes: torch.Tensor, probs: torch.Tensor, iou_threshold: float) -> torch.Tensor:
+    """
+    Non-Max Suppression for prediction results
+    """
+    _, prob_ranking = probs.sort(descending=True)
+
+    left_boxes = boxes[..., :]
+
+    picked_boxes = []
+    while prob_ranking.shape[0] > 0:
+        current_index = prob_ranking[0]
+        picked_boxes.append(current_index.item())
+
+        current_box = boxes[current_index, :]
+        prob_ranking = prob_ranking[1:]
+        left_boxes = left_boxes[prob_ranking, :]
+
+        ious = iou(left_boxes, current_box.unsqueeze(0))
+        prob_ranking = prob_ranking[ious < iou_threshold]
+
+    return picked_boxes
