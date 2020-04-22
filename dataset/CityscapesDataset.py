@@ -4,11 +4,10 @@ from typing import Union
 
 import PIL
 import torch
-import torchvision
 from PIL import Image
 
 from network.MatchPrior import MatchPrior
-from network.box_utils import corner_to_center
+from network import transforms
 from .helper import label_mapping, category_encoding
 
 
@@ -18,7 +17,7 @@ class CityscapesDataset(torch.utils.data.Dataset):
     ANNOTATION_FOLDER = "bounding_boxes"
     ANNOTATION_SUFFIX = "_gtFine_boxes.json"
 
-    def __init__(self, root_dir: str, data_transform: torchvision.transforms.Compose,
+    def __init__(self, root_dir: str, data_transform: transforms.Compose,
                  target_transform: Union[MatchPrior, type(None)], config: dict, is_test: bool = False):
         self._root_dir = pathlib.Path(root_dir)
         self._image_ids = []
@@ -42,17 +41,11 @@ class CityscapesDataset(torch.utils.data.Dataset):
     def __getitem__(self, index) -> (torch.Tensor, torch.Tensor, torch.Tensor):
         image = self.get_image(index)
 
+        # Boxes are in corner form [cx, cy, w, h]
         gt_boxes, gt_labels = self._load_annotations(index)
 
-        # Convert from absolute coordinates to relative coordinates
-        # TODO: Convert to composed transformations
-        gt_boxes[:, 0] /= image.size[1]
-        gt_boxes[:, 2] /= image.size[1]
-        gt_boxes[:, 1] /= image.size[0]
-        gt_boxes[:, 3] /= image.size[0]
-
         if self._data_transform:
-            image = self._data_transform(image)
+            image, gt_boxes, gt_labels = self._data_transform(image, gt_boxes, gt_labels)
 
         if self._target_transform and not self._test:
             boxes, labels = self._target_transform(gt_boxes, gt_labels)

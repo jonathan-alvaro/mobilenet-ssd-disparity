@@ -50,7 +50,7 @@ def iou(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     overlap_area = area(left_top_overlap, right_bottom_overlap)
     area_a = area(a[..., :2], a[..., 2:])
     area_b = area(b[..., :2], b[..., 2:])
-    return overlap_area / (area_a + area_b - overlap_area)
+    return overlap_area.float() / (area_a.float() + area_b.float() - overlap_area.float())
 
 
 def center_to_corner(boxes):

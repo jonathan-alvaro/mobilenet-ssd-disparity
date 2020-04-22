@@ -2,19 +2,19 @@ import itertools
 import os
 from time import time
 
-from PIL.ImageDraw import Draw
-from PIL.Image import Image
 import torch
+from PIL.ImageDraw import Draw
 from torch.optim import SGD
-from torchvision import transforms
 from torch.utils.data import DataLoader
 
 from dataset.CityscapesDataset import CityscapesDataset
+from network import transforms
 from network.MatchPrior import MatchPrior
+from network.Predictor import Predictor
 from network.box_utils import generate_priors
 from network.mobilenet_ssd_config import network_config
 from network.multibox_loss import MultiBoxLoss
-from train_utils import build_ssd, forward_img
+from train_utils import build_ssd
 
 torch.set_default_dtype(torch.float32)
 
@@ -24,10 +24,17 @@ def train_ssd(config: dict, use_gpu: bool = True):
 
     target_transform = MatchPrior(priors, config)
     data_transform = transforms.Compose([
-        transforms.Resize((300, 300)),
+        transforms.CustomJitter(),
+        transforms.RandomExpand(),
+        transforms.RandomCrop(),
+        transforms.RandomMirror(),
+        transforms.ToRelativeBoxes(),
+        transforms.Resize(config['image_size']),
+        transforms.Scale(),
         transforms.ToTensor()
     ])
     train_set = CityscapesDataset('dataset/train', data_transform, target_transform, config)
+
     num_classes = config['num_classes']
 
     train_loader = DataLoader(train_set, batch_size=32,
@@ -42,14 +49,14 @@ def train_ssd(config: dict, use_gpu: bool = True):
     criterion = MultiBoxLoss(0.5, 0, 3, config)
 
     ssd_params = [
-        {'params': ssd.extractor.parameters(), 'lr': 0.001},
-        {'params': ssd.extras.parameters(), 'lr': 0.001},
+        {'params': ssd.extractor.parameters(), 'lr': 0.0003},
+        {'params': ssd.extras.parameters(), 'lr': 0.0003},
         {'params': itertools.chain(ssd.class_headers.parameters(),
                                    ssd.location_headers.parameters()),
-         'lr': 0.001}
+         'lr': 0.0003}
     ]
 
-    optimizer = SGD(ssd_params, lr=0.001)
+    optimizer = SGD(ssd_params, lr=0.0003)
 
     running_loss = 0.0
     running_regression_loss = 0.0
@@ -92,17 +99,18 @@ def predict(config: dict):
     ssd = build_ssd(config, is_test=True)
     ssd.load_state_dict(torch.load("mobilenet_ssd.pth"))
     ssd.train(False)
-    ssd = ssd.cpu()
 
     data_transform = transforms.Compose([
         transforms.Resize((300, 300)),
         transforms.ToTensor()
     ])
 
+    net = Predictor(ssd, data_transform)
+
     val_set = CityscapesDataset('dataset/val', data_transform, None, config, True)
     test_image = val_set.get_image(0)
 
-    labels, boxes = ssd(test_image.unsqueeze(0))
+    boxes, labels, conf = net.predict(test_image.unsqueeze(0))
 
     converter = transforms.ToPILImage()
     test_image = converter(test_image)
