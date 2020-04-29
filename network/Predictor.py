@@ -1,20 +1,24 @@
 import torch
-import torchvision
+from torchvision import transforms
+from PIL import Image
 
-from network.box_utils import nms
+from network.box_utils import nms, convert_locations_to_boxes, generate_priors
+from network.mobilenet_ssd_config import priors
 from network.ssd import SSD
 
 
 class Predictor:
-    def __init__(self, net: SSD, data_transform: torchvision.transforms.Compose,
+    def __init__(self, net: SSD,
                  iou_threshold: float = 0.5):
         self._net = net
-        self._data_transform = data_transform
+        self._resize = transforms.Resize((300, 300))
+        self._to_tensor = transforms.ToTensor()
         self._threshold = iou_threshold
 
-    def predict(self, image, prob_threshold=0.5):
-        height, width, _ = image.shape
-        image = self._data_transform(image)
+    def predict(self, image: Image.Image, prob_threshold=0.25):
+        width, height = image.size
+        image = self._resize(image)
+        image = self._to_tensor(image)
         image = image.unsqueeze(0)
 
         with torch.no_grad():
@@ -27,6 +31,7 @@ class Predictor:
         picked_labels = []
 
         for class_index in range(1, conf.size(-1)):
+            print("class ", class_index)
             probs = conf[..., class_index]
             mask = probs > prob_threshold
             probs = probs[mask]
@@ -36,9 +41,10 @@ class Predictor:
             boxes_subset = boxes[mask, ...]
 
             chosen_indices = nms(boxes_subset, probs, self._threshold)
+            print(len(chosen_indices))
 
             picked_boxes.append(boxes_subset[chosen_indices, ...])
-            picked_probs.append(probs[chosen_indices, class_index])
+            picked_probs.append(probs[chosen_indices])
             picked_labels.extend([class_index] * chosen_indices.shape[0])
 
         if len(picked_boxes) == 0:
@@ -50,4 +56,7 @@ class Predictor:
         picked_boxes[..., 1] *= height
         picked_boxes[..., 3] *= height
 
-        return picked_boxes, torch.tensor(picked_labels), torch.cat(picked_probs)
+        picked_boxes = picked_boxes.view((-1, 4))
+        picked_labels = torch.tensor(picked_labels).view((-1, 1))
+        picked_probs = torch.cat(picked_probs).view((-1, 1))
+        return picked_boxes, picked_labels, picked_probs

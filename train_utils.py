@@ -1,6 +1,8 @@
 import torch
+import json
 from torch import nn
 
+from network.box_utils import iou
 from network.mobilenet import MobileNet
 from network.ssd import SSD
 
@@ -64,3 +66,57 @@ def build_ssd(config: dict, is_test: bool = False) -> SSD:
         location_headers, classification_headers, config, is_test
     )
     return ssd
+
+
+def calculate_map(pred_confidences: torch.Tensor, gt_labels: torch.Tensor,
+                  pred_boxes: torch.Tensor, gt_boxes: torch.Tensor) -> (float, torch.Tensor):
+    num_classes = pred_confidences.shape[-1]
+    pred_labels = pred_confidences.argmax(dim=pred_confidences.dim() - 1)
+    ious = iou(pred_boxes, gt_boxes)
+
+    aps = torch.zeros((num_classes,))
+
+    # Start from 1 because 0 is background
+    for class_code in range(1, num_classes):
+        class_mask = gt_labels == class_code
+
+        _, pred_ranking = (pred_confidences[class_mask])[..., class_code].flatten().sort()
+        sorted_pred_labels = pred_labels[class_mask].flatten()[pred_ranking]
+        sorted_gt_labels = gt_labels[class_mask].flatten()[pred_ranking]
+        sorted_ious = ious[class_mask].flatten()[pred_ranking]
+
+        tp = (sorted_gt_labels == class_code) & (sorted_ious >= 0.5) & (sorted_pred_labels == class_code)
+        fp = (sorted_gt_labels != class_code) & (sorted_ious >= 0.5) & (sorted_pred_labels == class_code)
+        fn = (sorted_gt_labels == class_code) & (sorted_ious < 0.5)
+
+        tp = tp.flatten().long().cumsum(0).float()
+        fp = fp.flatten().long().cumsum(0).float()
+        fn = fn.flatten().long().cumsum(0).float()
+
+        precision = tp / (fp + tp)
+        recall = tp / (tp + fn)
+
+        precision[torch.isnan(precision)] = 0
+        recall[torch.isnan(recall)] = 0
+
+        # print(precision)
+        # print(recall)
+        # print(tp)
+        # print(fp)
+
+        aps[class_code] = calculate_ap(precision, recall)
+
+    if (aps.mean().item()) > 1:
+        print(aps)
+        raise ValueError
+    return aps.mean().item(), aps
+
+
+def calculate_ap(precision: torch.Tensor, recall: torch.Tensor) -> float:
+    right_pointer = precision.shape[0]
+
+    ap = 0
+
+    change_points = recall[1:] != recall[:-1]
+    return (precision[1:][change_points] * (recall[1:][change_points] - recall[:-1][change_points])).sum().item()
+

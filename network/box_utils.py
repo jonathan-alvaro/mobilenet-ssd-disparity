@@ -26,7 +26,8 @@ def generate_priors(config: dict) -> torch.Tensor:
                 priors.append([cx, cy, w / factor, h * factor])
 
             # Create big box
-            w = h = config['max_size'][layer_idx] / config['image_size']
+            size = math.sqrt(config['max_size'][layer_idx] * config['min_size'][layer_idx])
+            w = h = size / config['image_size']
             priors.append([cx, cy, w, h])
 
     priors = torch.tensor(priors).view(-1, 4)
@@ -45,7 +46,7 @@ def iou(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     a and b should be in corner form, that is [min_x, min_y, max_x, max_y]
     """
     left_top_overlap = torch.max(a[..., :2], b[..., :2])
-    right_bottom_overlap = torch.max(a[..., 2:], b[..., 2:])
+    right_bottom_overlap = torch.min(a[..., 2:], b[..., 2:])
 
     overlap_area = area(left_top_overlap, right_bottom_overlap)
     area_a = area(a[..., :2], a[..., 2:])
@@ -58,8 +59,8 @@ def center_to_corner(boxes):
     Convert boxes from [cx, cy, w, h] to [left, top, right, bottom]
     """
     return torch.cat(
-        [(boxes[:, :2] - boxes[:, 2:] / 2),  # centers - half of width and height
-         (boxes[:, :2] + boxes[:, 2:] / 2)],  # centers + half of width and height
+        [(boxes[..., :2] - boxes[..., 2:] / 2),  # centers - half of width and height
+         (boxes[..., :2] + boxes[..., 2:] / 2)],  # centers + half of width and height
         boxes.dim() - 1
     )
 
@@ -88,6 +89,7 @@ def convert_boxes_to_locations(center_form_boxes, center_form_priors, center_var
 def convert_locations_to_boxes(locations, priors, center_var, size_var):
     if priors.dim() + 1 == locations.dim():
         priors = priors.unsqueeze(0)
+
     return torch.cat([
         locations[..., :2] * center_var * priors[..., 2:] + priors[..., :2],
         torch.exp(locations[..., 2:] * size_var) * priors[..., 2:]
@@ -115,20 +117,20 @@ def nms(boxes: torch.Tensor, probs: torch.Tensor, iou_threshold: float) -> torch
     """
     Non-Max Suppression for prediction results
     """
+
     _, prob_ranking = probs.sort(descending=True)
 
-    left_boxes = boxes[..., :]
-
     picked_boxes = []
+
     while prob_ranking.shape[0] > 0:
         current_index = prob_ranking[0]
         picked_boxes.append(current_index.item())
 
         current_box = boxes[current_index, :]
         prob_ranking = prob_ranking[1:]
-        left_boxes = left_boxes[prob_ranking, :]
+        left_boxes = boxes[prob_ranking, :]
 
         ious = iou(left_boxes, current_box.unsqueeze(0))
-        prob_ranking = prob_ranking[ious < iou_threshold]
+        prob_ranking = prob_ranking[ious <= iou_threshold]
 
-    return picked_boxes
+    return torch.tensor(picked_boxes).long()

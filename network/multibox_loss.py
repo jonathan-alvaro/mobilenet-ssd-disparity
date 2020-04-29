@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from network.box_utils import hard_negative_mining
+from network.box_utils import hard_negative_mining, convert_locations_to_boxes
 
 
 class MultiBoxLoss(nn.Module):
@@ -18,7 +18,7 @@ class MultiBoxLoss(nn.Module):
         self._neg_pos_ratio = mining_ratio
         self._variances = config['variance']
 
-    def forward(self, confidence, locations, labels, gt_boxes):
+    def forward(self, confidence, locations, labels, gt_locations):
         num_classes = confidence.size(2)
 
         with torch.no_grad():
@@ -27,11 +27,11 @@ class MultiBoxLoss(nn.Module):
 
         confidence = confidence[mask, :]
         classification_loss = F.cross_entropy(
-            confidence.reshape(-1, num_classes), labels[mask], size_average=False
+            confidence.reshape(-1, num_classes), labels[mask], reduction='sum'
         )
         pos_mask = labels > 0
         locations = locations[pos_mask, :].reshape(-1, 4)
-        gt_boxes = gt_boxes[pos_mask, :].reshape(-1, 4)
-        smooth_l1_loss = F.smooth_l1_loss(locations, gt_boxes, size_average=False)
-        num_pos = gt_boxes.size(0)
+        gt_locations = gt_locations[pos_mask, :].reshape(-1, 4)
+        smooth_l1_loss = F.smooth_l1_loss(locations, gt_locations, reduction='sum')
+        num_pos = gt_locations.size(0)
         return smooth_l1_loss / num_pos, classification_loss / num_pos

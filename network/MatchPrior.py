@@ -1,6 +1,7 @@
 import torch
 
-from network.box_utils import center_to_corner, iou, corner_to_center, convert_boxes_to_locations
+from network.box_utils import center_to_corner, iou, corner_to_center, convert_boxes_to_locations, \
+    convert_locations_to_boxes
 
 
 class MatchPrior:
@@ -23,6 +24,7 @@ class MatchPrior:
         locations = convert_boxes_to_locations(
             boxes, self._priors, self._center_variance, self._size_variance
         )
+
         return locations, labels
 
     def _assign_priors(self, gt_boxes: torch.Tensor,

@@ -1,26 +1,34 @@
 import json
 import pathlib
-from typing import Union
+from typing import Optional
 
 import PIL
+import cv2
+import numpy as np
 import torch
 from PIL import Image
 
-from network.MatchPrior import MatchPrior
 from network import transforms
-from .helper import label_mapping, category_encoding
+from network.MatchPrior import MatchPrior
+from .helper import label_mapping
 
 
 class CityscapesDataset(torch.utils.data.Dataset):
+    """
+    Outputs images in tensor form (scaled), labels (integer, not one-hot encoded),
+    and locations (not gt_boxes)
+    """
     IMAGE_SUFFIX = "_leftImg8bit.png"
     IMAGE_FOLDER = "images"
     ANNOTATION_FOLDER = "bounding_boxes"
     ANNOTATION_SUFFIX = "_gtFine_boxes.json"
 
-    def __init__(self, root_dir: str, data_transform: transforms.Compose,
-                 target_transform: Union[MatchPrior, type(None)], config: dict, is_test: bool = False):
+    def __init__(self, config: dict, root_dir: str, train_transform: Optional[transforms.Compose],
+                 data_transform: Optional[transforms.Compose],
+                 target_transform: Optional[MatchPrior], is_test: bool = False):
         self._root_dir = pathlib.Path(root_dir)
         self._image_ids = []
+        self._train_transform = train_transform
         self._data_transform = data_transform
         self._target_transform = target_transform
         self._num_classes = config['num_classes']
@@ -44,9 +52,23 @@ class CityscapesDataset(torch.utils.data.Dataset):
         # Boxes are in corner form [cx, cy, w, h]
         gt_boxes, gt_labels = self._load_annotations(index)
 
+        if self._train_transform:
+            image, gt_boxes, gt_labels = self._train_transform(image, gt_boxes, gt_labels)
+
         if self._data_transform:
             image, gt_boxes, gt_labels = self._data_transform(image, gt_boxes, gt_labels)
 
+        # TODO Cleanup
+        # from vision.ssd.data_preprocessing import TrainAugmentation
+        # transform = TrainAugmentation(300, np.array([127, 127, 127]), 128.0)
+        # import random
+        # image = cv2.imread('/home/jon/projects/uni/TA/pytorch-ssd/data/VOC2007/train/JPEGImages/00000.jpg')
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # gt_boxes = gt_boxes.numpy()
+        # random.seed(0)
+        # np.random.seed(0)
+        # image, gt_boxes, gt_labels = transform(image, gt_boxes, gt_labels)
+        # gt_boxes = torch.tensor(gt_boxes, dtype=torch.float32)
         if self._target_transform and not self._test:
             boxes, labels = self._target_transform(gt_boxes, gt_labels)
         else:
@@ -80,8 +102,8 @@ class CityscapesDataset(torch.utils.data.Dataset):
                 labels.append(item['label'])
                 boxes.append(item['bounding_box'])
 
-        boxes = torch.tensor(boxes, dtype=torch.float32)
-        labels = torch.tensor([category_encoding[label_mapping[elem]] for elem in labels])
+        boxes = torch.tensor(boxes, dtype=torch.float32).clamp(0)
+        labels = torch.tensor([label_mapping[elem] for elem in labels])
 
         return boxes, labels
 

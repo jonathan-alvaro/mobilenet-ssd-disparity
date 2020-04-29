@@ -65,7 +65,6 @@ class CustomJitter:
                 img = F.adjust_hue(img, hue_factor)
                 img = img.convert("RGB")
                 img = F.adjust_saturation(img, saturation_factor)
-                # img = img.convert("RGB")
 
             if random() < self._prob:
                 img = F.adjust_contrast(img, contrast_factor)
@@ -274,6 +273,7 @@ class Compose:
     """
     Pipeline of transformations to be applied to input
     """
+
     def __init__(self, transforms: list):
         self._transforms = transforms
 
@@ -283,3 +283,9 @@ class Compose:
             img, boxes, labels = op(img, boxes, labels)
 
         return img, boxes, labels
+
+
+class ToOpenCV:
+    def __call__(self, img: Image.Image, boxes: Optional[torch.Tensor] = None,
+                 labels: Optional[torch.Tensor] = None):
+        return np.array(img.convert("RGB")), boxes, labels

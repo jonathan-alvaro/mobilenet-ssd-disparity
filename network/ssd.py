@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .box_utils import generate_priors, convert_locations_to_boxes, corner_to_center
+from .box_utils import generate_priors, convert_locations_to_boxes, corner_to_center, center_to_corner
 from .mobilenet import MobileNet
 
 
@@ -27,9 +27,11 @@ class SSD(nn.Module):
         if is_test:
             self._priors = generate_priors(self._config)
 
-    def forward(self, x):
-        start_layer = 0
+        self.extras.apply(_xavier_init_)
+        self.class_headers.apply(_xavier_init_)
+        self.location_headers.apply(_xavier_init_)
 
+    def forward(self, x):
         sources = []
 
         for i, net_layer in enumerate(self.extractor.get_layers()):
@@ -38,7 +40,7 @@ class SSD(nn.Module):
                 sources.append(x)
 
         for layer_index, layer in enumerate(self.extras):
-            x = F.relu(layer(x))
+            x = layer(x)
             sources.append(x)
 
         confidences = []
@@ -54,7 +56,7 @@ class SSD(nn.Module):
             confidences = F.softmax(confidences, dim=2)
             boxes = convert_locations_to_boxes(locations, self._priors,
                                                self._config['variance'][0], self._config['variance'][1])
-            boxes = corner_to_center(boxes)
+            boxes = center_to_corner(boxes)
 
             return confidences, boxes
 
@@ -71,3 +73,8 @@ class SSD(nn.Module):
         location = location.permute(0, 2, 3, 1).contiguous()
         location = location.view(location.shape[0], -1, 4)
         return location
+
+
+def _xavier_init_(m: nn.Module):
+    if isinstance(m, nn.Conv2d):
+        nn.init.xavier_uniform_(m.weight)
