@@ -19,7 +19,7 @@ from train_utils import build_model, calculate_map
 torch.set_default_dtype(torch.float32)
 
 
-def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = True, model_name='mobilenet_ssd',
+def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = True, model_name='model',
               checkpoint_folder='checkpoints',
               log_folder='log', redirect_output=True):
     if not os.path.isdir(log_folder):
@@ -99,7 +99,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             regression_loss, classification_loss = criterion.forward(confidences, locations, labels, gt_locations)
             disparity_loss = disparity_criterion.forward(disparity, gt_disparity)
-            loss = regression_loss + classification_loss + disparity_loss
+            loss = regression_loss + classification_loss + 10 * disparity_loss
             loss.backward()
             optimizer.step()
 
@@ -142,4 +142,4 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
 starting_epoch = int(input("Starting Epoch: "))
 end_epoch = int(input("End Epoch: "))
-train_ssd(starting_epoch, end_epoch, network_config, redirect_output=False)
+train_ssd(starting_epoch, end_epoch, network_config, redirect_output=True)
