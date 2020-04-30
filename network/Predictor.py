@@ -22,13 +22,15 @@ class Predictor:
         image = image.unsqueeze(0)
 
         with torch.no_grad():
-            conf, boxes = self._net.forward(image)
+            conf, boxes, disparity = self._net.forward(image)
             boxes = boxes[0]
             conf = conf[0]
+            disparity = disparity[0]
 
         picked_boxes = []
         picked_probs = []
         picked_labels = []
+        indices = []
 
         for class_index in range(1, conf.size(-1)):
             probs = conf[..., class_index]
@@ -44,6 +46,7 @@ class Predictor:
             picked_boxes.append(boxes_subset[chosen_indices, ...])
             picked_probs.append(probs[chosen_indices])
             picked_labels.extend([class_index] * chosen_indices.shape[0])
+            indices.append(chosen_indices.clone())
 
         if len(picked_boxes) == 0:
             return torch.tensor([]), torch.tensor([]), torch.tensor([])
@@ -57,4 +60,5 @@ class Predictor:
         picked_boxes = picked_boxes.view((-1, 4))
         picked_labels = torch.tensor(picked_labels).view((-1, 1))
         picked_probs = torch.cat(picked_probs).view((-1, 1))
-        return picked_boxes, picked_labels, picked_probs
+        indices = torch.cat(indices).flatten()
+        return picked_boxes, picked_labels, picked_probs, disparity, indices

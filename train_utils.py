@@ -70,46 +70,38 @@ def build_model(config: dict, is_test: bool = False) -> IntegratedModel:
 
 def calculate_map(pred_confidences: torch.Tensor, gt_labels: torch.Tensor,
                   pred_boxes: torch.Tensor, gt_boxes: torch.Tensor) -> (float, torch.Tensor):
-    num_classes = pred_confidences.shape[-1]
-    pred_labels = pred_confidences.argmax(dim=pred_confidences.dim() - 1)
-    ious = iou(pred_boxes, gt_boxes)
+    num_classes = pred_confidences.shape[-1] - 1
 
-    aps = torch.zeros((num_classes,))
+    class_ap = []
 
-    # Start from 1 because 0 is background
-    for class_code in range(1, num_classes):
-        class_mask = gt_labels == class_code
+    for class_index in range(1, num_classes + 1):
+        pred_class_probs = pred_confidences[..., class_index]
+        _, prob_ranking = pred_class_probs.sort(descending=True)
 
-        _, pred_ranking = (pred_confidences[class_mask])[..., class_code].flatten().sort()
-        sorted_pred_labels = pred_labels[class_mask].flatten()[pred_ranking]
-        sorted_gt_labels = gt_labels[class_mask].flatten()[pred_ranking]
-        sorted_ious = ious[class_mask].flatten()[pred_ranking]
+        ious = iou(pred_boxes[prob_ranking], gt_boxes[prob_ranking])
+        pred_class_probs = pred_class_probs[prob_ranking]
+        pred_class_labels = torch.argmax(pred_class_probs, dim=pred_class_probs.dim()-1)
+        class_gt_labels = gt_labels[prob_ranking]
 
-        tp = (sorted_gt_labels == class_code) & (sorted_ious >= 0.5) & (sorted_pred_labels == class_code)
-        fp = (sorted_gt_labels != class_code) & (sorted_ious >= 0.5) & (sorted_pred_labels == class_code)
-        fn = (sorted_gt_labels == class_code) & (sorted_ious < 0.5)
+        tp = (ious >= 0.5).flatten() & (pred_class_labels == class_gt_labels).flatten() & (class_gt_labels == class_index).flatten()
+        fp = (ious >= 0.5).flatten() & (pred_class_labels != class_gt_labels).flatten() & (class_gt_labels != class_index).flatten()
+        fn = (class_gt_labels == class_index).flatten() & ((ious < 0.5) | (pred_class_labels != class_gt_labels)).flatten()
 
-        tp = tp.flatten().long().cumsum(0).float()
-        fp = fp.flatten().long().cumsum(0).float()
-        fn = fn.flatten().long().cumsum(0).float()
+        precision = tp.float() / (tp.float() + fp.float())
+        recall = tp.float() / (tp.float() + fn.float())
 
-        precision = tp / (fp + tp)
-        recall = tp / (tp + fn)
+        precision[precision == float('inf')] = 0
+        precision[precision == float('-inf')] = 0
+        recall[recall == float('inf')] = 0
+        recall[recall == float('-inf')] = 0
 
-        precision[torch.isnan(precision)] = 0
-        recall[torch.isnan(recall)] = 0
+        for i, _ in precision:
+            precision[i] = precision[i:].max()
 
-        # print(precision)
-        # print(recall)
-        # print(tp)
-        # print(fp)
+        class_ap.append((precision * recall).sum())
 
-        aps[class_code] = calculate_ap(precision, recall)
+    return class_ap / len(class_ap)
 
-    if (aps.mean().item()) > 1:
-        print(aps)
-        raise ValueError
-    return aps.mean().item(), aps
 
 
 def calculate_ap(precision: torch.Tensor, recall: torch.Tensor) -> float:

@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 from .box_utils import generate_priors, convert_locations_to_boxes, corner_to_center, center_to_corner
 from .mobilenet import MobileNet
+from .mobilenet_ssd_config import priors
 
 
 class UpsamplingBlock(nn.Module):
@@ -67,7 +68,7 @@ class IntegratedModel(nn.Module):
         self._config = config
 
         if is_test:
-            self._priors = generate_priors(self._config)
+            self._priors = priors
 
         self.extras.apply(_xavier_init_)
         self.class_headers.apply(_xavier_init_)

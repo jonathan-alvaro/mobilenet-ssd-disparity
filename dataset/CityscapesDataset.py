@@ -2,6 +2,7 @@ import json
 import pathlib
 from typing import Optional
 
+import numpy as np
 import PIL
 import torch
 import torchvision
@@ -59,9 +60,11 @@ class CityscapesDataset(torch.utils.data.Dataset):
             image, gt_boxes, gt_labels = self._train_transform(image, gt_boxes, gt_labels)
 
         if self._data_transform:
+            if type(image) != np.ndarray:
+                image = np.array(image)
             image, gt_boxes, gt_labels = self._data_transform(image, gt_boxes, gt_labels)
 
-        if self._target_transform and not self._test:
+        if self._target_transform:
             boxes, labels = self._target_transform(gt_boxes, gt_labels)
         else:
             boxes = gt_boxes
