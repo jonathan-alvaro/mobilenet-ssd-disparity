@@ -8,7 +8,7 @@ class BerHuLoss(nn.Module):
         abs_diff = diff.abs()
 
         c = abs_diff.max() / 5
-        cutoff_mask = (abs_diff <= c).long().float()
+        cutoff_mask = (abs_diff <= c)
         l2_loss = (diff ** 2 + c ** 2) / (2 * c)
 
         loss = cutoff_mask.long().float() * abs_diff + (~cutoff_mask).long().float() * l2_loss
