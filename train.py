@@ -60,7 +60,8 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         {'params': ssd.extractor.parameters()},
         {'params': ssd.extras.parameters()},
         {'params': itertools.chain(ssd.class_headers.parameters(),
-                                   ssd.location_headers.parameters())}
+                                   ssd.location_headers.parameters(),
+                                   ssd.upsampling.parameters())}
     ]
 
     optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005)
