@@ -75,6 +75,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         running_loss = 0.0
         running_regression_loss = 0.0
         running_classification_loss = 0.0
+        running_disparity_loss = 0.0
         num_steps = len(train_loader)
         aps = torch.zeros((config['num_classes'],))
         running_map = 0
@@ -103,6 +104,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             running_loss += loss.item()
             running_regression_loss += regression_loss.item()
             running_classification_loss += classification_loss.item()
+            running_disparity_loss += disparity_loss
 
             with torch.no_grad():
                 boxes = convert_locations_to_boxes(locations, priors.cuda(), config['variance'][0],
@@ -116,6 +118,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         avg_loss = running_loss / num_steps
         avg_reg_loss = running_regression_loss / num_steps
         avg_class_loss = running_classification_loss / num_steps
+        avg_disp_loss = running_disparity_loss / num_steps
         mean_ap = running_map / num_steps
         epoch_ap = aps / num_steps
 
@@ -123,6 +126,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         print("Average Loss: {:.2f}".format(avg_loss))
         print("Average Regression Loss: {:.2f}".format(avg_reg_loss))
         print("Average Classification Loss: {:.2f}".format(avg_class_loss))
+        print("Average Disparity Loss: {:.2f}".format(avg_disp_loss))
         print("Average mAP: {:.2f}".format(mean_ap))
         print("Average AP per class: {}".format(epoch_ap))
 
