@@ -56,6 +56,10 @@ class IntegratedModel(nn.Module):
             nn.ReLU(),
             UpsamplingBlock(256, 128),
             nn.ReLU(),
+            UpsamplingBlock(128, 64),
+            nn.ReLU(),
+            UpsamplingBlock(64, 32),
+            nn.ReLU(),
             nn.Conv2d(128, 1, kernel_size=3, stride=1, padding=1, bias=False),
             nn.ReLU()
         ).cuda()
