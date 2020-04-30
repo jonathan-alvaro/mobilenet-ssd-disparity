@@ -13,7 +13,7 @@ from network.MatchPrior import MatchPrior
 from network.box_utils import generate_priors, convert_locations_to_boxes
 from network.mobilenet_ssd_config import network_config
 from network.multibox_loss import MultiBoxLoss
-from train_utils import build_ssd, calculate_map
+from train_utils import build_model, calculate_map
 
 torch.set_default_dtype(torch.float32)
 
@@ -40,11 +40,11 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     ])
     train_set = CityscapesDataset(config, 'dataset/train', train_transform,
                                   data_transform, target_transform)
-    train_set[0]
+
     train_loader = DataLoader(train_set, batch_size=32,
                               shuffle=True, num_workers=4)
 
-    ssd = build_ssd(config)
+    ssd = build_model(config)
     if use_gpu:
         ssd = ssd.cuda()
     ssd.train(True)
@@ -81,7 +81,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             sys.stdout = open(os.path.join(log_folder, 'train_epoch_{}.txt'.format(epoch)), 'w')
 
         for i, batch in enumerate(train_loader):
-            images, gt_locations, labels = batch
+            images, gt_locations, labels, gt_disparity = batch
 
             if use_gpu:
                 images = images.cuda()
@@ -90,7 +90,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             optimizer.zero_grad()
 
-            confidences, locations = ssd(images)
+            confidences, locations, disparity = ssd(images)
 
             regression_loss, classification_loss = criterion.forward(confidences, locations, labels, gt_locations)
             loss = regression_loss + classification_loss
@@ -133,63 +133,4 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
 starting_epoch = int(input("Starting Epoch: "))
 end_epoch = int(input("End Epoch: "))
-train_ssd(starting_epoch, end_epoch, network_config, redirect_output=True)
-
-
-def mock_train(config: dict, use_gpu: bool = True, model_path='mock.pth'):
-    priors = generate_priors(config)
-
-    target_transform = MatchPrior(priors, config)
-    data_transform = transforms.Compose([
-        transforms.CustomJitter(),
-        transforms.RandomExpand(),
-        transforms.RandomCrop(),
-        transforms.RandomMirror(),
-        transforms.ToRelativeBoxes(),
-        transforms.Resize(config['image_size']),
-        transforms.Scale(),
-        transforms.ToTensor()
-    ])
-    train_set = CityscapesDataset(config, 'dataset/train', None, data_transform, target_transform)
-
-    ssd = build_ssd(config)
-    if use_gpu:
-        ssd = ssd.cuda()
-    ssd.train(True)
-    if os.path.isfile(model_path):
-        ssd.load_state_dict(torch.load(model_path))
-    criterion = MultiBoxLoss(0.5, 0, 3, config)
-
-    ssd_params = [
-        {'params': ssd.extractor.parameters(), 'lr': 1e-7},
-        {'params': ssd.extras.parameters(), 'lr': 1e-7},
-        {'params': itertools.chain(ssd.class_headers.parameters(),
-                                   ssd.location_headers.parameters()),
-         'lr': 1e-7}
-    ]
-
-    optimizer = SGD(ssd_params)
-
-    images, gt_locations, labels = train_set[0]
-
-    if use_gpu:
-        images = images.cuda().unsqueeze(0)
-        gt_locations = gt_locations.cuda().unsqueeze(0)
-        labels = labels.cuda().unsqueeze(0)
-
-    optimizer.zero_grad()
-
-    confidences, locations = ssd(images)
-
-    regression_loss, classification_loss = criterion.forward(confidences, locations, labels, gt_locations)
-    loss = regression_loss + classification_loss
-    loss.backward()
-    optimizer.step()
-
-    print("Loss: {:.2f}".format(loss))
-    print("Regression Loss: {:.2f}".format(regression_loss))
-    print("Classification Loss: {:.2f}".format(classification_loss))
-
-    torch.save(ssd.state_dict(), model_path)
-
-# mock_train(network_config)
+train_ssd(starting_epoch, end_epoch, network_config, redirect_output=False)

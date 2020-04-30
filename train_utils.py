@@ -4,15 +4,15 @@ from torch import nn
 
 from network.box_utils import iou
 from network.mobilenet import MobileNet
-from network.ssd import SSD
+from network.integratedmodel import IntegratedModel
 
 
-def forward_img(net: SSD, img: torch.Tensor):
+def forward_img(net: IntegratedModel, img: torch.Tensor):
     res = net(img)
     return res
 
 
-def build_ssd(config: dict, is_test: bool = False) -> SSD:
+def build_model(config: dict, is_test: bool = False) -> IntegratedModel:
     extra_layers = nn.ModuleList([
         nn.Sequential(
             nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1),
@@ -61,7 +61,7 @@ def build_ssd(config: dict, is_test: bool = False) -> SSD:
     mobilenet = MobileNet()
     mobilenet.load('mobilenetv1.pth')
 
-    ssd = SSD(
+    ssd = IntegratedModel(
         config['num_classes'], [11, 13], mobilenet, extra_layers,
         location_headers, classification_headers, config, is_test
     )

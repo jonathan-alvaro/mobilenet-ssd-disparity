@@ -3,9 +3,8 @@ import pathlib
 from typing import Optional
 
 import PIL
-import cv2
-import numpy as np
 import torch
+import torchvision
 from PIL import Image
 
 from network import transforms
@@ -22,6 +21,8 @@ class CityscapesDataset(torch.utils.data.Dataset):
     IMAGE_FOLDER = "images"
     ANNOTATION_FOLDER = "bounding_boxes"
     ANNOTATION_SUFFIX = "_gtFine_boxes.json"
+    DISPARITY_SUFFIX = "_disparity.png"
+    DISPARITY_FOLDER = "disparity"
 
     def __init__(self, config: dict, root_dir: str, train_transform: Optional[transforms.Compose],
                  data_transform: Optional[transforms.Compose],
@@ -46,11 +47,13 @@ class CityscapesDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self._image_ids)
 
-    def __getitem__(self, index) -> (torch.Tensor, torch.Tensor, torch.Tensor):
+    def __getitem__(self, index) -> (torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor):
         image = self.get_image(index)
 
         # Boxes are in corner form [cx, cy, w, h]
         gt_boxes, gt_labels = self._load_annotations(index)
+
+        disparity = self.get_disparity(index)
 
         if self._train_transform:
             image, gt_boxes, gt_labels = self._train_transform(image, gt_boxes, gt_labels)
@@ -58,24 +61,24 @@ class CityscapesDataset(torch.utils.data.Dataset):
         if self._data_transform:
             image, gt_boxes, gt_labels = self._data_transform(image, gt_boxes, gt_labels)
 
-        # TODO Cleanup
-        # from vision.ssd.data_preprocessing import TrainAugmentation
-        # transform = TrainAugmentation(300, np.array([127, 127, 127]), 128.0)
-        # import random
-        # image = cv2.imread('/home/jon/projects/uni/TA/pytorch-ssd/data/VOC2007/train/JPEGImages/00000.jpg')
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # gt_boxes = gt_boxes.numpy()
-        # random.seed(0)
-        # np.random.seed(0)
-        # image, gt_boxes, gt_labels = transform(image, gt_boxes, gt_labels)
-        # gt_boxes = torch.tensor(gt_boxes, dtype=torch.float32)
         if self._target_transform and not self._test:
             boxes, labels = self._target_transform(gt_boxes, gt_labels)
         else:
             boxes = gt_boxes
             labels = gt_labels
 
-        return image, boxes, labels
+        return image, boxes, labels, disparity
+
+    def get_disparity(self, index: int) -> torch.Tensor:
+        image_id = self._get_image_id(index)
+        disparity_file = image_id + self.DISPARITY_SUFFIX
+        disparity_path = self._root_dir.joinpath(self.DISPARITY_FOLDER, disparity_file)
+        disparity = Image.open(str(disparity_path)).convert("RGB")
+        resize_transform = torchvision.transforms.Resize((320, 320))
+        tensor_transform = torchvision.transforms.ToTensor()
+
+        return tensor_transform(resize_transform(disparity))
+
 
     def get_image(self, index: int) -> PIL.Image.Image:
         image_id = self._get_image_id(index)
