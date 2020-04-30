@@ -12,4 +12,4 @@ class BerHuLoss(nn.Module):
         l2_loss = (diff ** 2 + c ** 2) / (2 * c)
 
         loss = cutoff_mask.long().float() * abs_diff + (~cutoff_mask).long().float() * l2_loss
-        return loss / loss.flatten().shape[0]
+        return loss.flatten().sum() / loss.flatten().shape[0]
