@@ -90,6 +90,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                 images = images.cuda()
                 gt_locations = gt_locations.cuda()
                 labels = labels.cuda()
+                gt_disparity = gt_disparity.cuda()
 
             optimizer.zero_grad()
 
