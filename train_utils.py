@@ -73,34 +73,34 @@ def calculate_map(pred_confidences: torch.Tensor, gt_labels: torch.Tensor,
     num_classes = pred_confidences.shape[-1] - 1
 
     class_ap = []
-
+    pred_labels = torch.argmax(pred_confidences[..., 1:], dim=pred_confidences.dim() - 1).view((-1, 1))
+    
     for class_index in range(1, num_classes + 1):
-        pred_class_probs = pred_confidences[..., class_index]
+        pred_class_probs = pred_confidences[:, class_index].view((-1, 1))
         _, prob_ranking = pred_class_probs.sort(descending=True)
 
         ious = iou(pred_boxes[prob_ranking], gt_boxes[prob_ranking])
-        pred_class_probs = pred_class_probs[prob_ranking]
-        pred_class_labels = torch.argmax(pred_class_probs, dim=pred_class_probs.dim()-1)
-        class_gt_labels = gt_labels[prob_ranking]
+        pred_class_labels = torch.argmax(pred_labels[prob_ranking], dim=pred_labels.dim()-1)
+        class_gt_labels = gt_labels[prob_ranking].view((-1, 1))
 
-        tp = (ious >= 0.5).flatten() & (pred_class_labels == class_gt_labels).flatten() & (class_gt_labels == class_index).flatten()
+        tp = ((ious >= 0.5).flatten()) & ((pred_class_labels == class_gt_labels).flatten()) & ((class_gt_labels == class_index).flatten())
         fp = (ious >= 0.5).flatten() & (pred_class_labels != class_gt_labels).flatten() & (class_gt_labels != class_index).flatten()
         fn = (class_gt_labels == class_index).flatten() & ((ious < 0.5) | (pred_class_labels != class_gt_labels)).flatten()
 
-        precision = tp.float() / (tp.float() + fp.float())
-        recall = tp.float() / (tp.float() + fn.float())
+        precision = tp.long().float() / (tp.long().float() + fp.long().float())
+        recall = tp.long().float() / (tp.long().float() + fn.long().float())
 
-        precision[precision == float('inf')] = 0
-        precision[precision == float('-inf')] = 0
-        recall[recall == float('inf')] = 0
-        recall[recall == float('-inf')] = 0
+        precision[torch.isnan(precision)] = 0
+        precision = precision.cumsum(dim=0)
+        recall[torch.isnan(recall)] = 0
+        recall = recall.cumsum(dim=0)
 
-        for i, _ in precision:
+        for i, _ in enumerate(precision):
             precision[i] = precision[i:].max()
 
         class_ap.append((precision * recall).sum())
 
-    return class_ap / len(class_ap)
+    return sum(class_ap) / len(class_ap)
 
 
 

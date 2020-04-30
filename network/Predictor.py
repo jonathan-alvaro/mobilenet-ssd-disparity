@@ -44,12 +44,12 @@ class Predictor:
             chosen_indices = nms(boxes_subset, probs, self._threshold)
 
             picked_boxes.append(boxes_subset[chosen_indices, ...])
-            picked_probs.append(probs[chosen_indices])
+            picked_probs.append(conf[chosen_indices])
             picked_labels.extend([class_index] * chosen_indices.shape[0])
             indices.append(chosen_indices.clone())
 
         if len(picked_boxes) == 0:
-            return torch.tensor([]), torch.tensor([]), torch.tensor([])
+            return torch.tensor([]), torch.tensor([]), torch.tensor([]), disparity, torch.tensor([])
 
         picked_boxes = torch.cat(picked_boxes)
         picked_boxes[..., 0] *= width
@@ -59,6 +59,6 @@ class Predictor:
 
         picked_boxes = picked_boxes.view((-1, 4))
         picked_labels = torch.tensor(picked_labels).view((-1, 1))
-        picked_probs = torch.cat(picked_probs).view((-1, 1))
+        picked_probs = torch.cat(picked_probs).view((-1, conf.shape[-1]))
         indices = torch.cat(indices).flatten()
         return picked_boxes, picked_labels, picked_probs, disparity, indices

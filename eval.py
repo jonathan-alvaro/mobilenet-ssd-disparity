@@ -9,7 +9,7 @@ from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model, calculate_map
 
 
-def eval(config: dict, model_path="/home/jon/projects/uni/TA/mobilenet-ssd/checkpoints/mobilenet_ssd_epoch18.pth"):
+def eval(config: dict, model_path='checkpoints/model_epoch40.pth'):
     ssd = build_model(config, is_test=True)
     ssd.load_state_dict(torch.load(model_path))
     ssd.train(False)
@@ -36,10 +36,15 @@ def eval(config: dict, model_path="/home/jon/projects/uni/TA/mobilenet-ssd/check
     map_gt_labels = []
     map_gt_disparity = []
 
-    for i, image in enumerate(val_set):
-        image, gt_boxes, labels, gt_disparity = val_set[i]
+    for i, _ in enumerate(val_set):
+        if i % 10 == 0:
+            print("Image {}".format(i))
+        _, gt_boxes, labels, gt_disparity = val_set[i]
+        image = val_set.get_image(i)
 
         boxes, preds, probs, disparity, indices = net.predict(image)
+        if len(boxes) <= 0:
+            continue
 
         all_boxes.append(boxes)
         all_preds.append(preds)
