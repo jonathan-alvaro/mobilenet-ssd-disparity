@@ -24,7 +24,6 @@ class UpsamplingBlock(nn.Module):
         _, indices = self.pool(torch.empty(input_size[0], input_size[1], input_size[2] * 2, input_size[3] * 2))
 
         out = self.unpool(x, indices.cuda())
-        print(out.shape)
         residual = self.conv1(out)
         residual = self.bn1(residual)
 
@@ -79,10 +78,7 @@ class IntegratedModel(nn.Module):
                 sources.append(x)
 
         for i, layer in enumerate(self.upsampling):
-            print("Upsample layer {}".format(i))
             x = layer(x)
-        print(x.shape)
-        raise ValueError
 
         for layer_index, layer in enumerate(self.extras):
             x = layer(x)

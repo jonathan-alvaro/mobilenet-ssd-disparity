@@ -7,6 +7,7 @@ from torch.optim import SGD
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 
+from dataset.BerHuLoss import BerHuLoss
 from dataset.CityscapesDataset import CityscapesDataset
 from network import transforms
 from network.MatchPrior import MatchPrior
@@ -53,6 +54,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             torch.load(os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, start_epoch - 1))))
 
     criterion = MultiBoxLoss(0.5, 0, 3, config)
+    disparity_criterion = BerHuLoss()
 
     ssd_params = [
         {'params': ssd.extractor.parameters()},
@@ -93,7 +95,8 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             confidences, locations, disparity = ssd(images)
 
             regression_loss, classification_loss = criterion.forward(confidences, locations, labels, gt_locations)
-            loss = regression_loss + classification_loss
+            disparity_loss = disparity_criterion.forward(disparity, gt_disparity)
+            loss = regression_loss + classification_loss + disparity_loss
             loss.backward()
             optimizer.step()
 
