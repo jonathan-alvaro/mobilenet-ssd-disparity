@@ -77,8 +77,7 @@ class IntegratedModel(nn.Module):
             if i in self.source_layers:
                 sources.append(x)
 
-        for i, layer in enumerate(self.upsampling):
-            x = layer(x)
+        disparity = self.upsampling(x)
 
         for layer_index, layer in enumerate(self.extras):
             x = layer(x)
