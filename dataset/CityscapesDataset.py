@@ -74,7 +74,7 @@ class CityscapesDataset(torch.utils.data.Dataset):
         disparity_file = image_id + self.DISPARITY_SUFFIX
         disparity_path = self._root_dir.joinpath(self.DISPARITY_FOLDER, disparity_file)
         disparity = Image.open(str(disparity_path)).convert("RGB")
-        resize_transform = torchvision.transforms.Resize((320, 320))
+        resize_transform = torchvision.transforms.Resize((382, 382))
         tensor_transform = torchvision.transforms.ToTensor()
 
         return tensor_transform(resize_transform(disparity))
