@@ -1,3 +1,5 @@
+import math
+
 import torch
 from PIL.ImageDraw import Draw
 from network import transforms
@@ -79,3 +81,37 @@ def eval(config: dict, model_path='checkpoints/model_epoch40.pth'):
 
 with torch.no_grad():
     eval(network_config)
+
+
+def eval_disparity(config: dict, model_path='checkpoints/model_epoch30.pth'):
+    ssd = build_model(config, is_test=True)
+    ssd.load_state_dict(torch.load(model_path))
+    ssd.train(False)
+
+    net = Predictor(ssd)
+
+    data_transform = transforms.Compose([
+        transforms.ToRelativeBoxes(),
+        transforms.Resize(config['image_size']),
+        transforms.Scale(),
+        transforms.ToTensor()
+    ])
+
+    target_transform = MatchPrior(priors, config)
+
+    val_set = CityscapesDataset(config, 'dataset/val', None, data_transform, target_transform, True)
+
+    errors = []
+
+    for i, _ in enumerate(val_set):
+        image = val_set.get_image(i)
+        gt_disparity = val_set.get_disparity(i)
+
+        _, _, _, _, disparity = net.predict(image)
+
+        error = ((gt_disparity - disparity) ** 2).flatten()
+
+        errors.append(error)
+
+    errors = torch.cat(errors)
+    print("RMSE: {}".format(math.sqrt(errors.mean().item())))
