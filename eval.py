@@ -44,6 +44,10 @@ def eval(config: dict, model_path='checkpoints/model_epoch40.pth'):
         for class_index in range(1, config['num_classes'] + 1):
             class_mask = labels == class_index
 
+            # If there's no prediction in this class, skip the class
+            if class_mask.long().sum() <= 0:
+                continue
+
             class_probabilities = probs[class_mask]
             class_boxes = boxes[class_mask]
 
@@ -63,6 +67,8 @@ def eval(config: dict, model_path='checkpoints/model_epoch40.pth'):
             box_drawer.rectangle((top_left, bottom_right))
 
         image.save('result.jpg')
+
+        # TODO change to all image evaluation
         break
 
 
