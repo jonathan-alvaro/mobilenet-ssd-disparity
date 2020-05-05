@@ -48,7 +48,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch40.pth'):
             if class_mask.long().sum() <= 0:
                 continue
 
-            class_probabilities = probs[class_mask]
+            class_probabilities = probs[class_mask, class_index]
             class_boxes = boxes[class_mask]
 
             class_indices = nms(class_boxes, class_probabilities, 0.5)
