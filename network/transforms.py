@@ -260,7 +260,8 @@ class Scale:
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
-        return img / 255, boxes, labels, disparity
+        DISPARITY_MAX = 32257
+        return img / 255, boxes, labels, disparity / DISPARITY_MAX
 
 
 class ToTensor:
