@@ -30,6 +30,8 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     target_transform = MatchPrior(priors, config)
     train_transform = transforms.Compose([
         transforms.CustomJitter(),
+        transforms.RandomExpand(),
+        transforms.RandomCrop(),
         transforms.ToOpenCV(),
         transforms.RandomMirror()
     ])
