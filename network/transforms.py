@@ -213,7 +213,7 @@ class RandomMirror:
 
         if random() < self._prob:
             img = img[:, ::-1]
-            disparity = disparity[::-1]
+            disparity = disparity[:, ::-1]
             boxes = boxes.numpy()
             boxes[:, 0::2] = width - boxes[:, 2::-2]
             boxes = torch.Tensor(boxes)
