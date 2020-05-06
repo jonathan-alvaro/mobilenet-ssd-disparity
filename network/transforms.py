@@ -116,7 +116,7 @@ class RandomExpand:
             new_width = int(ratio * width)
             new_height = int(ratio * height)
             expanded_image = np.zeros((new_height, new_width, depth), dtype=img.dtype)
-            expanded_disparity = np.zeros_like(expanded_image, dtype=img.dtype)
+            expanded_disparity = np.zeros_((new_height, new_width), dtype=disparity.dtype)
             expanded_image[new_top:new_top + height, new_left:new_left + width] = img
             expanded_disparity[new_top:new_top + height, new_left:new_left + width] = disparity
             img = expanded_image
