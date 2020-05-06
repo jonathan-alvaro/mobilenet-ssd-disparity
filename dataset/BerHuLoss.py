@@ -4,6 +4,8 @@ from torch import nn
 
 class BerHuLoss(nn.Module):
     def forward(self, prediction: torch.Tensor, target: torch.Tensor):
+        prediction = prediction.squeeze()
+
         diff = prediction - target
         abs_diff = diff.abs()
 
