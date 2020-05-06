@@ -54,7 +54,7 @@ class CityscapesDataset(torch.utils.data.Dataset):
         # Boxes are in corner form [cx, cy, w, h]
         gt_boxes, gt_labels = self._load_annotations(index)
 
-        disparity = self.get_disparity(index)
+        disparity = self.get_disparity(index)[0]
 
         if self._train_transform:
             image, gt_boxes, gt_labels, disparity = self._train_transform(image, gt_boxes, gt_labels, disparity)
