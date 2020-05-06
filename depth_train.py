@@ -25,6 +25,9 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     if not os.path.isdir(log_folder):
         os.makedirs(log_folder)
 
+    priors = generate_priors(config)
+
+    target_transform = MatchPrior(priors, config)
     train_transform = transforms.Compose([
         transforms.CustomJitter(),
         transforms.RandomExpand(),
@@ -38,7 +41,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         transforms.ToTensor()
     ])
     train_set = CityscapesDataset(config, 'dataset/train', train_transform,
-                                  data_transform, None)
+                                  data_transform, target_transform)
 
     train_loader = DataLoader(train_set, batch_size=32,
                               shuffle=True, num_workers=4)
