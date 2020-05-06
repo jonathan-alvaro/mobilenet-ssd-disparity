@@ -234,7 +234,7 @@ class ToRelativeBoxes:
         boxes[:, 1] /= height
         boxes[:, 3] /= height
 
-        return img, boxes, labels
+        return img, boxes, labels, disparity
 
 
 class Resize:
