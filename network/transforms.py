@@ -286,11 +286,11 @@ class Compose:
         self._transforms = transforms
 
     def __call__(self, img: Image.Image, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None):
+                 labels: Optional[torch.Tensor] = None, disparity = None):
         for op in self._transforms:
-            img, boxes, labels = op(img, boxes, labels)
+            img, boxes, labels, disparity = op(img, boxes, labels, disparity)
 
-        return img, boxes, labels
+        return img, boxes, labels, disparity
 
 
 class ToOpenCV:
