@@ -39,7 +39,7 @@ class CustomJitter:
         self._min = 0.3
 
     def __call__(self, img: Image.Image, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None):
+                 labels: Optional[torch.Tensor] = None, disparity: Optional[torch.Tensor] = None):
         if random() < self._prob:
             brightness_factor = uniform(self._min, self._max_brightness_factor)
             img = F.adjust_brightness(img, brightness_factor)
@@ -69,7 +69,7 @@ class CustomJitter:
             if random() < self._prob:
                 img = F.adjust_contrast(img, contrast_factor)
 
-        return img, boxes, labels
+        return img, boxes, labels, disparity
 
 
 class RandomLightingNoise:
@@ -84,7 +84,7 @@ class RandomLightingNoise:
         self._prob = prob
 
     def __call__(self, img: Image.Image, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None):
+                 labels: Optional[torch.Tensor] = None, disparity: Optional[torch.Tensor] = None):
         if random() < self._prob:
             swap_mode = choice(self._perms)
             rgb = img.split()
@@ -92,7 +92,7 @@ class RandomLightingNoise:
             for idx in swap_mode:
                 new_bands.append(rgb[idx])
             img = Image.merge("RGB", new_bands)
-        return img, boxes, labels
+        return img, boxes, labels, disparity
 
 
 class RandomExpand:
@@ -101,9 +101,10 @@ class RandomExpand:
         self._max_ratio = max_expand_ratio
 
     def __call__(self, img: Image.Image, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None):
+                 labels: Optional[torch.Tensor] = None, disparity: Optional[torch.Tensor] = None):
         # noinspection PyTypeChecker
         img = np.array(img.convert("RGB"))
+        disparity = disparity.numpy()
 
         if random() < self._prob:
             ratio = uniform(1, 4)
@@ -115,13 +116,16 @@ class RandomExpand:
             new_width = int(ratio * width)
             new_height = int(ratio * height)
             expanded_image = np.zeros((new_height, new_width, depth), dtype=img.dtype)
+            expanded_disparity = np.zeros_like(expanded_image, dtype=img.dtype)
             expanded_image[new_top:new_top + height, new_left:new_left + width] = img
+            expanded_disparity[new_top:new_top + height, new_left:new_left + width] = disparity
             img = expanded_image
+            disparity = expanded_disparity
 
             boxes[..., :2] += torch.tensor([new_left, new_top]).float()
             boxes[..., 2:] += torch.tensor([new_left, new_top]).float()
 
-        return img, boxes, labels
+        return img, boxes, labels, disparity
 
 
 class RandomCrop:
@@ -136,9 +140,9 @@ class RandomCrop:
         self._min_crop = min_crop_ratio
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None):
+                 labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
         if random() > self._prob:
-            return img, boxes, labels
+            return img, boxes, labels, disparity
 
         min_iou, max_iou = choice(self._sample_modes)
 
@@ -170,6 +174,7 @@ class RandomCrop:
                 continue
 
             cropped_image = img[crop_box[1]:crop_box[3], crop_box[0]:crop_box[2], :]
+            cropped_disparity =  disparity[crop_box[1]:crop_box[3], crop_box[0]:crop_box[2]]
 
             box_centers = (boxes[..., :2] + boxes[..., 2:]) / 2
             top_left_mask = (box_centers[..., 0] > crop_box[0]) & (box_centers[..., 1] > crop_box[1])
@@ -192,10 +197,10 @@ class RandomCrop:
             valid_boxes[..., :2] -= torch.tensor(crop_box[:2]).float()
             valid_boxes[..., 2:] -= torch.tensor(crop_box[:2]).float()
 
-            return cropped_image, valid_boxes, valid_labels
+            return cropped_image, valid_boxes, valid_labels, cropped_disparity
 
         # Return original inputs if no tries succeed
-        return img, boxes, labels
+        return img, boxes, labels, disparity
 
 
 class RandomMirror:
@@ -203,16 +208,17 @@ class RandomMirror:
         self._prob = prob
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None):
+                 labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
         _, width, _ = img.shape
 
         if random() < self._prob:
             img = img[:, ::-1]
+            disparity = disparity[::-1]
             boxes = boxes.numpy()
             boxes[:, 0::2] = width - boxes[:, 2::-2]
             boxes = torch.Tensor(boxes)
 
-        return img, boxes, labels
+        return img, boxes, labels, disparity
 
 
 class ToRelativeBoxes:
@@ -221,7 +227,7 @@ class ToRelativeBoxes:
     """
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None):
+                 labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
         height, width, depth = img.shape
         boxes[:, 0] /= width
         boxes[:, 2] /= width
@@ -240,9 +246,10 @@ class Resize:
         self._size = size
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None):
+                 labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
         img = cv2.resize(img, (self._size, self._size))
-        return img, boxes, labels
+        disparity = cv2.resize(disparity, (94, 94))
+        return img, boxes, labels, disparity
 
 
 class Scale:
@@ -252,8 +259,8 @@ class Scale:
     """
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None):
-        return img / 255, boxes, labels
+                 labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
+        return img / 255, boxes, labels, disparity
 
 
 class ToTensor:
@@ -262,11 +269,12 @@ class ToTensor:
     """
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None):
+                 labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
         img = torch.tensor(img).float()
+        disparity = torch.tensor(disparity).float()
         img = img.permute((2, 0, 1))
 
-        return img, boxes, labels
+        return img, boxes, labels, disparity
 
 
 class Compose:
@@ -287,5 +295,5 @@ class Compose:
 
 class ToOpenCV:
     def __call__(self, img: Image.Image, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None):
-        return np.array(img.convert("RGB")), boxes, labels
+                 labels: Optional[torch.Tensor] = None, disparity = None):
+        return np.array(img.convert("RGB")), boxes, labels, np.array(disparity)
