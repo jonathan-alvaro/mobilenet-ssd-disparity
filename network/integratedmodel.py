@@ -25,7 +25,6 @@ class UpsamplingBlock(nn.Module):
         _, indices = self.pool(torch.empty(input_size[0], input_size[1], input_size[2] * 2, input_size[3] * 2))
 
         out = self.unpool(x.cuda(), indices.cuda())
-        out = out.cpu()
         residual = self.conv1(out)
         residual = self.bn1(residual)
 
