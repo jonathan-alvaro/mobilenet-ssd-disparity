@@ -71,8 +71,6 @@ class IntegratedModel(nn.Module):
 
         self.depth_sources_indices = [3, 5, 7]
 
-        if not is_test:
-            self.upsampling = self.upsampling.cuda()
         self._test = is_test
         self._config = config
 
