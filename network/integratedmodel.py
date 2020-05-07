@@ -51,19 +51,25 @@ class IntegratedModel(nn.Module):
         self.class_headers = class_headers
         self.image_size = config['image_size']
 
-        self.toplayer = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0)
+        self.toplayer = nn.Conv2d(512, 256, kernel_size=1, stride=1, padding=0)
 
-        self.latlayer1 = nn.Conv2d(512, 256, kernel_size=1, stride=1, padding=0)
+        self.latlayer1 = nn.Conv2d(256, 256, kernel_size=1, stride=1, padding=0)
+        self.latlayer2 = nn.Conv2d(128, 256, kernel_size=1, stride=1, padding=0)
 
         self.smooth1 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
+        self.smooth2 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
 
         self.agg1 = agg_node(256, 128)
         self.agg2 = agg_node(256, 128)
+        self.agg3 = agg_node(256, 128)
 
-        self.up1 = upshuffle(128, 128, 2)
+        self.up1 = upshuffle(128, 128, 4)
+        self.up2 = upshuffle(128, 128, 2)
 
         self.predict1 = smooth(384, 128)
         self.predict2 = predict(128, 1)
+
+        self.depth_sources_indices = [3, 5, 7]
 
         if not is_test:
             self.upsampling = self.upsampling.cuda()
@@ -98,24 +104,36 @@ class IntegratedModel(nn.Module):
         return F.upsample(x, size=(H,W), mode='bilinear') + y
 
 
+    def calc_disparity(self, depth_sources):
+        top = self.toplayer(depth_sources[-1])
+        lat1 = self._upsample_add(top, self.latlayer1(depth_sources[-2]))
+        lat1 = self.smooth1(lat1)
+        lat2 = self._upsample_add(lat1, self.latlayer2(depth_sources[-3]))
+        lat2 = self.smooth2(lat2)
+
+        d_top = self.up1(self.agg1(top))
+        d_lat1 = self.up2(self.agg2(lat1))
+        d_lat2 = self.agg3(lat2)
+        print(d_lat2.shape)
+        raise ValueError
+
+
     def forward(self, x):
         sources = []
+        depth_sources = []
 
         for i, net_layer in enumerate(self.extractor.get_layers()):
             x = net_layer(x)
             if i in self.source_layers:
                 sources.append(x)
+            if i in self.depth_sources_indices:
+                depth_sources.append(x)
 
         for layer_index, layer in enumerate(self.extras):
             x = layer(x)
             sources.append(x)
 
-        p2 = self.toplayer(sources[1])
-        p1 = self._upsample_add(p2, self.latlayer1(sources[0]))
-        p1 = self.smooth1(p1)
-
-        d2, d1 = self.up1(self.agg1(p2)), self.agg2(p1)
-        print(d1.shape)
+        disparity = self.calc_disparity(depth_sources)
         raise ValueError
 
         confidences = []
