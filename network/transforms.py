@@ -248,7 +248,7 @@ class Resize:
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
         img = cv2.resize(img, (self._size, self._size))
-        disparity = cv2.resize(disparity.astype(float), (94, 94))
+        disparity = cv2.resize(disparity.astype(float), (75, 75))
         return img, boxes, labels, disparity
 
 

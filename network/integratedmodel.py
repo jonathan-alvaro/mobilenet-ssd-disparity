@@ -114,9 +114,9 @@ class IntegratedModel(nn.Module):
         d_lat2 = self.agg3(lat2)
 
         _, _, height, width = d_lat2.shape
-        vol = torch.cat( [F.upsample(d, size=(H, W), mode='bilinear') for d in [d_top, d_lat1, d_lat2]], dim=1)
-        print(vol.shape)
-        raise ValueError
+        vol = torch.cat( [F.upsample(d, size=(height, width), mode='bilinear') for d in [d_top, d_lat1, d_lat2]], dim=1)
+
+        return self.predict2(self.predict1(vol))
 
 
     def forward(self, x):
@@ -135,6 +135,7 @@ class IntegratedModel(nn.Module):
             sources.append(x)
 
         disparity = self.calc_disparity(depth_sources)
+        print(disparity.shape)
         raise ValueError
 
         confidences = []
