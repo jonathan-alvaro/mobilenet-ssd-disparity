@@ -9,32 +9,32 @@ from .mobilenet import MobileNet
 from .mobilenet_ssd_config import priors
 
 
-class UpsamplingBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, is_test: bool = False):
-        super().__init__()
-        self.unpool = nn.MaxUnpool2d(2, stride=2)
-        self.pool = nn.MaxPool2d(2, stride=2, return_indices=True)
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=2, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
+def agg_node(in_planes, out_planes):
+    return nn.Sequential(
+        nn.Conv2d(in_planes, in_planes, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+        nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+    )
 
-    def __call__(self, x: torch.Tensor) -> torch.Tensor:
-        input_size = x.size()
-        _, indices = self.pool(torch.empty(input_size[0], input_size[1], input_size[2] * 2, input_size[3] * 2))
+def smooth(in_planes, out_planes):
+    return nn.Sequential(
+        nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(),
+    )
 
-        out = self.unpool(x.cuda(), indices.cuda())
-        residual = self.conv1(out)
-        residual = self.bn1(residual)
+def predict(in_planes, out_planes):
+    return nn.Sequential(
+        nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=1, padding=1),
+        nn.Sigmoid(),
+    )
 
-        out = self.conv1(out)
-        out = self.bn1(residual)
-        out = self.relu(out)
-        out = self.conv2(out)
-        out = self.bn2(residual)
-        out += residual
-        return out
+def upshuffle(in_planes, out_planes, upscale_factor):
+    return nn.Sequential(
+        nn.Conv2d(in_planes, out_planes*upscale_factor**2, kernel_size=3, stride=1, padding=1),
+        nn.PixelShuffle(upscale_factor),
+        nn.ReLU()
+    )
 
 
 class IntegratedModel(nn.Module):
@@ -50,16 +50,21 @@ class IntegratedModel(nn.Module):
         self.location_headers = location_headers
         self.class_headers = class_headers
         self.image_size = config['image_size']
-        self.upsampling = nn.Sequential(
-            UpsamplingBlock(1024, 512),
-            nn.ReLU(),
-            UpsamplingBlock(512, 256),
-            nn.ReLU(),
-            UpsamplingBlock(256, 128),
-            nn.ReLU(),
-            nn.Conv2d(128, 1, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU()
-        )
+
+        self.toplayer = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0)
+
+        self.latlayer1 = nn.Conv2d(512, 256, kernel_size=1, stride=1, padding=0)
+
+        self.smooth1 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
+
+        self.agg1 = agg_node(256, 128)
+        self.agg2 = agg_node(256, 128)
+
+        self.up1 = upshuffle(128, 128, 2)
+
+        self.predict1 = smooth(384, 128)
+        self.predict2 = predict(128, 1)
+
         if not is_test:
             self.upsampling = self.upsampling.cuda()
         self._test = is_test
@@ -72,6 +77,27 @@ class IntegratedModel(nn.Module):
         self.class_headers.apply(_xavier_init_)
         self.location_headers.apply(_xavier_init_)
 
+
+    def _upsample_add(self, x, y):
+        '''Upsample and add two feature maps.
+        Args:
+          x: (Variable) top feature map to be upsampled.
+          y: (Variable) lateral feature map.
+        Returns:
+          (Variable) added feature map.
+        Note in PyTorch, when input size is odd, the upsampled feature map
+        with `F.upsample(..., scale_factor=2, mode='nearest')`
+        maybe not equal to the lateral feature map size.
+        e.g.
+        original input size: [N,_,15,15] ->
+        conv2d feature map size: [N,_,8,8] ->
+        upsampled feature map size: [N,_,16,16]
+        So we choose bilinear upsample which supports arbitrary output sizes.
+        '''
+        _,_,H,W = y.size()
+        return F.upsample(x, size=(H,W), mode='bilinear') + y
+
+
     def forward(self, x):
         sources = []
 
@@ -80,11 +106,17 @@ class IntegratedModel(nn.Module):
             if i in self.source_layers:
                 sources.append(x)
 
-        disparity = self.upsampling(x)
-
         for layer_index, layer in enumerate(self.extras):
             x = layer(x)
             sources.append(x)
+
+        p2 = self.toplayer(sources[1])
+        p1 = self._upsample_add(p2, self.latlayer1(sources[0]))
+        p1 = self.smooth1(p1)
+
+        d2, d1 = self.up1(self.agg1(p2)), self.agg2(p1)
+        print(d1.shape)
+        raise ValueError
 
         confidences = []
         locations = []
