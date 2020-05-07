@@ -112,7 +112,10 @@ class IntegratedModel(nn.Module):
         d_top = self.up1(self.agg1(top))
         d_lat1 = self.up2(self.agg2(lat1))
         d_lat2 = self.agg3(lat2)
-        print(d_lat2.shape)
+
+        _, _, height, width = d_lat2.shape
+        vol = torch.cat( [F.upsample(d, size=(H, W), mode='bilinear') for d in [d_top, d_lat1, d_lat2]], dim=1)
+        print(vol.shape)
         raise ValueError
 
 
