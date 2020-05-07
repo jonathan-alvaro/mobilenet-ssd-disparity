@@ -135,8 +135,7 @@ class IntegratedModel(nn.Module):
             sources.append(x)
 
         disparity = self.calc_disparity(depth_sources)
-        print(disparity.shape)
-        raise ValueError
+        disparity = disparity.squeeze()
 
         confidences = []
         locations = []
