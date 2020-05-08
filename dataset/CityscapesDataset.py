@@ -2,6 +2,7 @@ import json
 import pathlib
 from typing import Optional
 
+import cv2
 import numpy as np
 import PIL
 import torch
@@ -76,10 +77,9 @@ class CityscapesDataset(torch.utils.data.Dataset):
         image_id = self._get_image_id(index)
         disparity_file = image_id + self.DISPARITY_SUFFIX
         disparity_path = self._root_dir.joinpath(self.DISPARITY_FOLDER, disparity_file)
-        disparity = Image.open(str(disparity_path))
-        tensor_transform = torchvision.transforms.ToTensor()
+        disparity = cv2.imread(str(disparity_path), 0)
 
-        return tensor_transform(disparity)
+        return torch.tensor(disparity).unsqueeze(0)
 
 
     def get_image(self, index: int) -> PIL.Image.Image:

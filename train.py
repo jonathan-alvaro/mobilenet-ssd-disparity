@@ -55,7 +55,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             torch.load(os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, start_epoch - 1))))
 
     criterion = MultiBoxLoss(0.5, 0, 3, config)
-    disparity_criterion = BerHuLoss()
+    disparity_criterion = torch.nn.MSELoss()
 
     ssd_params = [
         {'params': ssd.extractor.parameters()},
@@ -65,8 +65,8 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                                    ssd.upsampling.parameters())}
     ]
 
-    optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005)
-    lr_scheduler = CosineAnnealingLR(optimizer, 120, last_epoch= -1)
+    optimizer = SGD(ssd_params, lr=0.01, momentum=0.9, weight_decay=0.00005)
+    lr_scheduler = CosineAnnealingLR(optimizer, 60, last_epoch= -1)
     if os.path.isfile(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))):
         print("Loading previous optimizer")
         optimizer.load_state_dict(
@@ -94,13 +94,14 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                 labels = labels.cuda()
                 gt_disparity = gt_disparity.cuda()
 
+            gt_disparity = gt_disparity
             optimizer.zero_grad()
 
             confidences, locations, disparity = ssd(images)
 
             regression_loss, classification_loss = criterion.forward(confidences, locations, labels, gt_locations)
-            disparity_loss = disparity_criterion.forward(disparity, gt_disparity)
-            loss = regression_loss + classification_loss + 10 * disparity_loss
+            disparity_loss = torch.sqrt(disparity_criterion(disparity.squeeze(), gt_disparity))
+            loss = regression_loss + classification_loss + disparity_loss
             loss.backward()
             optimizer.step()
 
@@ -109,29 +110,16 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             running_classification_loss += classification_loss.item()
             running_disparity_loss += disparity_loss
 
-            with torch.no_grad():
-                boxes = convert_locations_to_boxes(locations, priors.cuda(), config['variance'][0],
-                                                   config['variance'][1])
-                gt_boxes = convert_locations_to_boxes(gt_locations, priors.cuda(), config['variance'][0],
-                                                      config['variance'][1])
-                batch_map, batch_ap = calculate_map(confidences, labels, boxes, gt_boxes)
-                running_map += batch_map
-                aps += batch_ap
-
         avg_loss = running_loss / num_steps
         avg_reg_loss = running_regression_loss / num_steps
         avg_class_loss = running_classification_loss / num_steps
         avg_disp_loss = running_disparity_loss / num_steps
-        mean_ap = running_map / num_steps
-        epoch_ap = aps / num_steps
 
         print("Epoch {}".format(epoch))
         print("Average Loss: {:.2f}".format(avg_loss))
         print("Average Regression Loss: {:.2f}".format(avg_reg_loss))
         print("Average Classification Loss: {:.2f}".format(avg_class_loss))
         print("Average Disparity Loss: {:.2f}".format(avg_disp_loss))
-        print("Average mAP: {:.2f}".format(mean_ap))
-        print("Average AP per class: {}".format(epoch_ap))
 
         torch.save(ssd.state_dict(), os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, epoch)))
         torch.save(optimizer.state_dict(), os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(epoch)))
