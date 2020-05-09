@@ -61,7 +61,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         {'params': ssd.upsampling.parameters()}
     ]
 
-    optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005)
+    optimizer = SGD(ssd_params, lr=0.001, momentum=0.1, weight_decay=0.0005)
     lr_scheduler = CosineAnnealingLR(optimizer, 120, last_epoch= -1)
     if os.path.isfile(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))):
         print("Loading previous optimizer")
@@ -85,8 +85,12 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                 gt_disparity = gt_disparity.cuda()
 
             optimizer.zero_grad()
+            features = images
+            for l in ssd.extractor.get_layers():
+                features = l(features)
+            disparity = ssd.upsampling(features)
+            disparity = disparity.squeeze()
 
-            disparity = ssd.upsampling(ssd.extractor(images))
 
             disparity_loss = torch.sqrt(disparity_criterion.forward(disparity, gt_disparity))
             loss = disparity_loss
@@ -109,3 +113,5 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     if sys.stdout != sys.__stdout__:
         sys.stdout.close()
         sys.stdout = sys.__stdout__
+
+train_ssd(0, 60, network_config, redirect_output=False)
