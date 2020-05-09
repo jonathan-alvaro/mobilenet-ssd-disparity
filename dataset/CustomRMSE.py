@@ -5,6 +5,7 @@ import numpy as np
 
 class CustomRMSE(nn.Module):
     def __init__(self, weights: np.ndarray):
+        super().__init__()
         self.weights = weights
 
     def forward(self, prediction: torch.Tensor, target: torch.Tensor):
