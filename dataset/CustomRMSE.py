@@ -18,5 +18,5 @@ class CustomRMSE(nn.Module):
             pixel_weights[target.flatten() >= i] = self.weights[i]
 
         diff = diff.flatten() * pixel_weights
-        diff = diff / len(diff)
+        diff = diff.sum() / len(diff)
         return torch.sqrt(diff)
