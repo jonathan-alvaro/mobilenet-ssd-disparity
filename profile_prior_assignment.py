@@ -16,6 +16,7 @@ target_transform = MatchPrior(priors, network_config)
 #     transforms.RandomMirror()
 # ])
 data_transform = transforms.Compose([
+    transforms.ToOpenCV(),
     transforms.ToRelativeBoxes(),
     transforms.Resize(network_config['image_size']),
     transforms.Scale(),
