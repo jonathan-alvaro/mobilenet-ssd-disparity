@@ -1,6 +1,6 @@
 from random import random, uniform, choice
 
-from typing import Optional
+from typing import Optional, Union
 
 import cv2
 from PIL import Image
@@ -294,6 +294,12 @@ class Compose:
 
 
 class ToOpenCV:
-    def __call__(self, img: Image.Image, boxes: Optional[torch.Tensor] = None,
+    def __call__(self, img: Union[Image.Image, torch.Tensor, np.ndarray],
+                 boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity = None):
-        return np.array(img.convert("RGB")), boxes, labels, np.array(disparity)
+        if type(img) == Image.Image:
+            img = np.array(img.convert("RGB"))
+        elif type(img) == torch.Tensor:
+            img = img.numpy()
+
+        return img, boxes, labels, np.array(disparity)
