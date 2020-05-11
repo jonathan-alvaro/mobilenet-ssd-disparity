@@ -9,14 +9,16 @@ def generate_priors(config: dict) -> torch.Tensor:
 
     for layer_idx, map_size in enumerate(config['feature_size']):
         for row, col in product(range(map_size), repeat=2):
-            shrinkage = config['image_size'] / config['shrink_factor'][layer_idx]
+            width_shrinkage = config['width'] / config['shrink_factor'][layer_idx]
+            height_shrinkage = config['height'] / config['shrink_factor'][layer_idx]
 
             # Calculate center for box in position (row, col)
-            cx = (col + 0.5) / shrinkage
-            cy = (row + 0.5) / shrinkage
+            cx = (col + 0.5) / width_shrinkage
+            cy = (row + 0.5) / height_shrinkage
 
             # Create small box
-            w = h = config['min_size'][layer_idx] / config['image_size']
+            w = config['min_size'][layer_idx] / config['width']
+            h = config['min_size'][layer_idx] / config['height']
             priors.append([cx, cy, w, h])
 
             # Create boxes with pre-defined aspect ratios
@@ -27,7 +29,8 @@ def generate_priors(config: dict) -> torch.Tensor:
 
             # Create big box
             size = math.sqrt(config['max_size'][layer_idx] * config['min_size'][layer_idx])
-            w = h = size / config['image_size']
+            w = size / config['width']
+            h = size / config['height']
             priors.append([cx, cy, w, h])
 
     priors = torch.tensor(priors).view(-1, 4)

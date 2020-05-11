@@ -49,7 +49,6 @@ class IntegratedModel(nn.Module):
         self.extras = extras
         self.location_headers = location_headers
         self.class_headers = class_headers
-        self.image_size = config['image_size']
         self.upsampling = nn.Sequential(
             UpsamplingBlock(1024, 512),
             nn.ReLU(),
