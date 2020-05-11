@@ -2,7 +2,8 @@ from dataset.helper import num_classes
 from network.box_utils import generate_priors
 
 network_config = {
-    'image_size': 300,
+    'width': 400,
+    'height': 200,
     'num_classes': num_classes + 1,  # + 1 for background class
     'iou_threshold': 0.45,
     'variance': [0.1, 0.2],

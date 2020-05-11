@@ -36,7 +36,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     ])
     data_transform = transforms.Compose([
         transforms.ToRelativeBoxes(),
-        transforms.Resize(config['image_size']),
+        transforms.Resize(config['width'], config['height']),
         transforms.Scale(),
         transforms.ToTensor()
     ])

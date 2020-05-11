@@ -11,7 +11,7 @@ class Predictor:
     def __init__(self, net: IntegratedModel,
                  iou_threshold: float = 0.5):
         self._net = net
-        self._resize = transforms.Resize((300, 300))
+        self._resize = transforms.Resize((400, 200))
         self._to_tensor = transforms.ToTensor()
         self._threshold = iou_threshold
 
@@ -27,38 +27,4 @@ class Predictor:
             conf = conf[0]
             disparity = disparity[0]
 
-        picked_boxes = []
-        picked_probs = []
-        picked_labels = []
-        indices = []
-
-        for class_index in range(1, conf.size(-1)):
-            probs = conf[..., class_index]
-            mask = probs > prob_threshold
-            probs = probs[mask]
-            if probs.size(0) == 0:
-                continue
-
-            boxes_subset = boxes[mask, ...]
-
-            chosen_indices = nms(boxes_subset, probs, self._threshold)
-
-            picked_boxes.append(boxes_subset[chosen_indices, ...])
-            picked_probs.append(conf[chosen_indices])
-            picked_labels.extend([class_index] * chosen_indices.shape[0])
-            indices.append(chosen_indices.clone())
-
-        if len(picked_boxes) == 0:
-            return torch.tensor([]), torch.tensor([]), torch.tensor([]), disparity, torch.tensor([])
-
-        picked_boxes = torch.cat(picked_boxes)
-        picked_boxes[..., 0] *= width
-        picked_boxes[..., 2] *= width
-        picked_boxes[..., 1] *= height
-        picked_boxes[..., 3] *= height
-
-        picked_boxes = picked_boxes.view((-1, 4))
-        picked_labels = torch.tensor(picked_labels).view((-1, 1))
-        picked_probs = torch.cat(picked_probs).view((-1, conf.shape[-1]))
-        indices = torch.cat(indices).flatten()
-        return picked_boxes, picked_labels, picked_probs, disparity, indices
+        return conf, boxes, disparity

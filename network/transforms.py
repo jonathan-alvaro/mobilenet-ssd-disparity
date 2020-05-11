@@ -242,12 +242,13 @@ class Resize:
     Resize image to shape (size, size)
     """
 
-    def __init__(self, size: int):
-        self._size = size
+    def __init__(self, width: int, height: int):
+        self._width = width
+        self._height = height
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
-        img = cv2.resize(img, (self._size, self._size))
+        img = cv2.resize(img, (self._width, self._height))
         disparity = cv2.resize(disparity.astype(float), (94, 94))
         return img, boxes, labels, disparity
 
