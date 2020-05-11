@@ -2,6 +2,7 @@ import json
 import pathlib
 from typing import Optional
 
+import cv2
 import numpy as np
 import PIL
 import torch
@@ -54,15 +55,15 @@ class CityscapesDataset(torch.utils.data.Dataset):
         # Boxes are in corner form [cx, cy, w, h]
         gt_boxes, gt_labels = self._load_annotations(index)
 
-        disparity = self.get_disparity(index)
+        disparity = self.get_disparity(index)[0]
 
         if self._train_transform:
-            image, gt_boxes, gt_labels = self._train_transform(image, gt_boxes, gt_labels)
+            image, gt_boxes, gt_labels, disparity = self._train_transform(image, gt_boxes, gt_labels, disparity)
 
         if self._data_transform:
             if type(image) != np.ndarray:
                 image = np.array(image)
-            image, gt_boxes, gt_labels = self._data_transform(image, gt_boxes, gt_labels)
+            image, gt_boxes, gt_labels, disparity = self._data_transform(image, gt_boxes, gt_labels, disparity)
 
         if self._target_transform:
             boxes, labels = self._target_transform(gt_boxes, gt_labels)
@@ -76,11 +77,9 @@ class CityscapesDataset(torch.utils.data.Dataset):
         image_id = self._get_image_id(index)
         disparity_file = image_id + self.DISPARITY_SUFFIX
         disparity_path = self._root_dir.joinpath(self.DISPARITY_FOLDER, disparity_file)
-        disparity = Image.open(str(disparity_path)).convert("RGB")
-        resize_transform = torchvision.transforms.Resize((382, 382))
-        tensor_transform = torchvision.transforms.ToTensor()
+        disparity = cv2.imread(str(disparity_path), 0)
 
-        return tensor_transform(resize_transform(disparity))
+        return torch.tensor(disparity).unsqueeze(0)
 
 
     def get_image(self, index: int) -> PIL.Image.Image:

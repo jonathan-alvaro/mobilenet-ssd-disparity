@@ -54,19 +54,15 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         ssd.load_state_dict(
             torch.load(os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, start_epoch - 1))))
 
-    criterion = MultiBoxLoss(0.5, 0, 3, config)
     disparity_criterion = torch.nn.MSELoss()
 
     ssd_params = [
         {'params': ssd.extractor.parameters()},
-        {'params': ssd.extras.parameters()},
-        {'params': itertools.chain(ssd.class_headers.parameters(),
-                                   ssd.location_headers.parameters(),
-                                   ssd.upsampling.parameters())}
+        {'params': ssd.upsampling.parameters()}
     ]
 
-    optimizer = SGD(ssd_params, lr=0.01, momentum=0.9, weight_decay=0.00005)
-    lr_scheduler = CosineAnnealingLR(optimizer, 60, last_epoch= -1)
+    optimizer = SGD(ssd_params, lr=0.001, momentum=0.1, weight_decay=0.0005)
+    lr_scheduler = CosineAnnealingLR(optimizer, 120, last_epoch= -1)
     if os.path.isfile(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))):
         print("Loading previous optimizer")
         optimizer.load_state_dict(
@@ -75,50 +71,40 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     for epoch in range(start_epoch, end_epoch):
         lr_scheduler.step()
         running_loss = 0.0
-        running_regression_loss = 0.0
-        running_classification_loss = 0.0
         running_disparity_loss = 0.0
         num_steps = len(train_loader)
-        aps = torch.zeros((config['num_classes'],))
-        running_map = 0
 
         if redirect_output:
             sys.stdout = open(os.path.join(log_folder, 'train_epoch_{}.txt'.format(epoch)), 'w')
 
         for i, batch in enumerate(train_loader):
-            images, gt_locations, labels, gt_disparity = batch
+            images, _, _, gt_disparity = batch
 
             if use_gpu:
                 images = images.cuda()
-                gt_locations = gt_locations.cuda()
-                labels = labels.cuda()
                 gt_disparity = gt_disparity.cuda()
 
-            gt_disparity = gt_disparity
             optimizer.zero_grad()
+            features = images
+            for l in ssd.extractor.get_layers():
+                features = l(features)
+            disparity = ssd.upsampling(features)
+            disparity = disparity.squeeze()
 
-            confidences, locations, disparity = ssd(images)
 
-            regression_loss, classification_loss = criterion.forward(confidences, locations, labels, gt_locations)
-            disparity_loss = torch.sqrt(disparity_criterion(disparity.squeeze(), gt_disparity))
-            loss = regression_loss + classification_loss + disparity_loss
+            disparity_loss = torch.sqrt(disparity_criterion.forward(disparity, gt_disparity))
+            loss = disparity_loss
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item()
-            running_regression_loss += regression_loss.item()
-            running_classification_loss += classification_loss.item()
             running_disparity_loss += disparity_loss
 
         avg_loss = running_loss / num_steps
-        avg_reg_loss = running_regression_loss / num_steps
-        avg_class_loss = running_classification_loss / num_steps
         avg_disp_loss = running_disparity_loss / num_steps
 
         print("Epoch {}".format(epoch))
         print("Average Loss: {:.2f}".format(avg_loss))
-        print("Average Regression Loss: {:.2f}".format(avg_reg_loss))
-        print("Average Classification Loss: {:.2f}".format(avg_class_loss))
         print("Average Disparity Loss: {:.2f}".format(avg_disp_loss))
 
         torch.save(ssd.state_dict(), os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, epoch)))
@@ -128,7 +114,4 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         sys.stdout.close()
         sys.stdout = sys.__stdout__
 
-
-starting_epoch = int(input("Starting Epoch: "))
-end_epoch = int(input("End Epoch: "))
-train_ssd(starting_epoch, end_epoch, network_config, redirect_output=True)
+train_ssd(0, 60, network_config, redirect_output=False)

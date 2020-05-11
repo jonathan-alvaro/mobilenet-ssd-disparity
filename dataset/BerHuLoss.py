@@ -4,12 +4,17 @@ from torch import nn
 
 class BerHuLoss(nn.Module):
     def forward(self, prediction: torch.Tensor, target: torch.Tensor):
+        prediction = prediction.squeeze()
+
         diff = prediction - target
         abs_diff = diff.abs()
 
-        c = abs_diff.max() / 5
+        c = abs_diff.flatten(start_dim=1).max(dim=1)[0] / 5
+        c = c.view((-1, 1, 1))
+        c = c.repeat(1, diff.shape[1], diff.shape[2])
         cutoff_mask = (abs_diff <= c)
         l2_loss = (diff ** 2 + c ** 2) / (2 * c)
+        l2_loss[cutoff_mask] = 0
 
-        loss = cutoff_mask.long().float() * abs_diff + (~cutoff_mask).long().float() * l2_loss
-        return loss.flatten().sum() / loss.flatten().shape[0]
+        loss = l2_loss + abs_diff
+        return loss.flatten().mean()
