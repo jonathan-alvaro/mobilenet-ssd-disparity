@@ -33,6 +33,11 @@ def generate_priors(config: dict) -> torch.Tensor:
             h = size / config['height']
             priors.append([cx, cy, w, h])
 
+            for ratio in config['aspect_ratio'][layer_idx]:
+                factor = math.sqrt(ratio)
+                priors.append([cx, cy, w * factor, h / factor])
+                priors.append([cx, cy, w / factor, h * factor])
+
     priors = torch.tensor(priors).view(-1, 4)
     # Ensure all prior boxes lie within the image
     torch.clamp(priors, 0.0, 1.0, out=priors)

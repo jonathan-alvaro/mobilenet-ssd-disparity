@@ -25,6 +25,7 @@ class UpsamplingBlock(nn.Module):
         _, indices = self.pool(torch.empty(input_size[0], input_size[1], input_size[2] * 2, input_size[3] * 2))
 
         out = self.unpool(x.cuda(), indices.cuda())
+        out = out.cpu()
         residual = self.conv1(out)
         residual = self.bn1(residual)
 
@@ -56,7 +57,9 @@ class IntegratedModel(nn.Module):
             nn.ReLU(),
             UpsamplingBlock(256, 128),
             nn.ReLU(),
-            nn.Conv2d(128, 1, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(128, 32, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.ReLU(),
+            nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1, bias=False),
             nn.ReLU()
         )
         if not is_test:

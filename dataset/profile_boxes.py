@@ -3,7 +3,7 @@ import pathlib
 
 import numpy as np
 
-from .helper import label_mapping
+from helper import label_mapping
 
 
 def load_bounding_boxes() -> np.ndarray:
@@ -36,17 +36,34 @@ def load_bounding_boxes() -> np.ndarray:
 boxes = load_bounding_boxes()
 centers = (boxes[:, :2] + boxes[:, 2:]) / 2
 dimensions = (boxes[:, 2:] - boxes[:, :2])
+ratios = dimensions[:, 0] / dimensions[:, 1]
+ratios = ratios[ratios < 5.35] # Less than 200 data has ratio bigger than 5.35
 
 cx = np.histogram(centers[:, 0], bins=20)
 cy = np.histogram(centers[:, 1], bins=20)
 width = np.histogram(dimensions[:, 0], bins=6)
 height = np.histogram(dimensions[:, 1], bins=6)
+ratios = np.histogram(ratios, bins=6)
+
+cx = [list(item.astype(int)) for item in cx]
+cy = [list(item.astype(int)) for item in cy]
+width = [list(item.astype(int)) for item in width]
+height = [list(item.astype(int)) for item in height]
+ratio = [list(item) for item in ratios]
 
 profile = {
-    'cx':cx,
-    'cy':cy,
-    'width':width,
-    'height':height
+        'cx':cx,
+        'cy':cy,
+        'width':width,
+        'height':height,
+        'ratio':ratio
 }
 
-json.dump(profile, open('boxes_profile', 'w'))
+class Int64Encoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.int64):
+            return int(obj)
+        else:
+            return super().default(obj)
+
+json.dump(profile, open('boxes_profile.json', 'w'), cls=Int64Encoder)

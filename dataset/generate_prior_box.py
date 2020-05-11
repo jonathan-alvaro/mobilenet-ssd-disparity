@@ -104,7 +104,7 @@ def kmeans(boxes: np.ndarray, n_clusters: int = 6, max_iter: int = 600) -> np.nd
         valid_clusters = []
 
         distance = iou(boxes, centers)
-        cluster_for_boxes = np.argmin(distance, axis=distance.ndim - 1)
+        cluster_for_boxes = np.argmax(distance, axis=distance.ndim - 1)
 
         prev_centers = centers.copy()
         for i, _ in enumerate(centers):
@@ -125,5 +125,7 @@ def kmeans(boxes: np.ndarray, n_clusters: int = 6, max_iter: int = 600) -> np.nd
 
 
 boxes = load_bounding_boxes()
+boxes[..., 2:] -= boxes[..., :2]
+boxes[..., :2] -= boxes[..., :2]
 prior_boxes = kmeans(boxes)
 print(prior_boxes)

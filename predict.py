@@ -14,7 +14,7 @@ from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model, calculate_map
 
 
-def eval(config: dict, model_path='checkpoints/to_reduce_lr/model_epoch14.pth'):
+def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
     ssd = build_model(config, is_test=True)
     ssd.load_state_dict(torch.load(model_path))
     ssd.train(False)
@@ -30,7 +30,7 @@ def eval(config: dict, model_path='checkpoints/to_reduce_lr/model_epoch14.pth'):
 
     target_transform = MatchPrior(priors, config)
 
-    val_set = CityscapesDataset(config, 'dataset/val', None, data_transform, target_transform, True)
+    val_set = CityscapesDataset(config, 'dataset/train', None, data_transform, target_transform, True)
 
     test_image = val_set.get_image(2)
     
@@ -43,6 +43,7 @@ def eval(config: dict, model_path='checkpoints/to_reduce_lr/model_epoch14.pth'):
         bottom_right = tuple(boxes[i][2:].numpy().flatten())
         drawer.rectangle((top_left, bottom_right), width=5)
 
+    print(labels)
     test_image.save("predict.jpg")
     disparity = disparity[0].cpu().numpy()
     gt_disparity = val_set.get_disparity(2)[0]
@@ -53,6 +54,9 @@ def eval(config: dict, model_path='checkpoints/to_reduce_lr/model_epoch14.pth'):
     diff = gt_disparity - disparity
     print("Max prediction value:", disparity.max())
     print("Mean prediction value:", disparity.flatten().mean())
+    gt_median = np.median(gt_disparity.flatten())
+    print("GT median valueL:", gt_median)
+    print("GT pixels above median:", (gt_disparity > gt_median).flatten().sum())
     print("GT mean value:", gt_disparity.flatten().mean())
     print("MAE non zero gt:", np.sqrt(diff[gt_disparity != 0] ** 2).flatten().mean())
     print("MAE difference:",abs(diff).flatten().mean())

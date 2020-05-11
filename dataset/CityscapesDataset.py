@@ -23,8 +23,8 @@ class CityscapesDataset(torch.utils.data.Dataset):
     IMAGE_FOLDER = "images"
     ANNOTATION_FOLDER = "bounding_boxes"
     ANNOTATION_SUFFIX = "_gtFine_boxes.json"
-    DISPARITY_SUFFIX = "_disparity.png"
-    DISPARITY_FOLDER = "disparity"
+    DISPARITY_SUFFIX = ".png"
+    DISPARITY_FOLDER = "generated_disparity"
 
     def __init__(self, config: dict, root_dir: str, train_transform: Optional[transforms.Compose],
                  data_transform: Optional[transforms.Compose],
@@ -78,6 +78,7 @@ class CityscapesDataset(torch.utils.data.Dataset):
         disparity_file = image_id + self.DISPARITY_SUFFIX
         disparity_path = self._root_dir.joinpath(self.DISPARITY_FOLDER, disparity_file)
         disparity = cv2.imread(str(disparity_path), 0)
+        disparity = cv2.resize(disparity, (2048, 1024))
 
         return torch.tensor(disparity).unsqueeze(0)
 

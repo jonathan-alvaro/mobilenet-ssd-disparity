@@ -51,4 +51,5 @@ class MatchPrior:
         labels = gt_labels[best_target_per_prior_index]
         labels[best_target_per_prior < threshold] = 0  # Mark all matches below threshold as background
         boxes = gt_boxes[best_target_per_prior_index]
+        #print(best_target_per_prior_index.flatten().unique(return_counts=True))
         return boxes, labels

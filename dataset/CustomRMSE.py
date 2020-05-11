@@ -12,10 +12,10 @@ class CustomRMSE(nn.Module):
         diff = prediction - target
         diff = diff ** 2
 
-        pixel_weights = torch.zeros_like(target.flatten())
-
-        for i in range(len(self.weights)):
-            pixel_weights[target.flatten() >= i] = self.weights[i]
+        weights = torch.Tensor(self.weights)
+        pixel_weights = weights[target.flatten().long()]
+        if prediction.is_cuda:
+            pixel_weights = pixel_weights.cuda()
 
         diff = diff.flatten() * pixel_weights
         diff = diff.sum() / len(diff)
