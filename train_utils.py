@@ -41,6 +41,7 @@ def build_model(config: dict, is_test: bool = False) -> IntegratedModel:
     ])
 
     location_headers = nn.ModuleList([
+        nn.Conv2d(in_channels=256, out_channels=10 * 4, kernel_size=3, padding=1),
         nn.Conv2d(in_channels=512, out_channels=10 * 4, kernel_size=3, padding=1),
         nn.Conv2d(in_channels=1024, out_channels=10 * 4, kernel_size=3, padding=1),
         nn.Conv2d(in_channels=512, out_channels=10 * 4, kernel_size=3, padding=1),
@@ -50,6 +51,7 @@ def build_model(config: dict, is_test: bool = False) -> IntegratedModel:
     ])
 
     classification_headers = nn.ModuleList([
+        nn.Conv2d(in_channels=256, out_channels=10 * config['num_classes'], kernel_size=3, padding=1),
         nn.Conv2d(in_channels=512, out_channels=10 * config['num_classes'], kernel_size=3, padding=1),
         nn.Conv2d(in_channels=1024, out_channels=10 * config['num_classes'], kernel_size=3, padding=1),
         nn.Conv2d(in_channels=512, out_channels=10 * config['num_classes'], kernel_size=3, padding=1),
@@ -62,7 +64,7 @@ def build_model(config: dict, is_test: bool = False) -> IntegratedModel:
     mobilenet.load('mobilenetv1.pth')
 
     ssd = IntegratedModel(
-        config['num_classes'], [11, 13], mobilenet, extra_layers,
+        config['num_classes'], [5, 11, 13], mobilenet, extra_layers,
         location_headers, classification_headers, config, is_test
     )
     return ssd
