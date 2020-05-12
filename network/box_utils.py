@@ -8,7 +8,9 @@ def generate_priors(config: dict) -> torch.Tensor:
     priors = []
 
     for layer_idx, map_size in enumerate(config['feature_size']):
-        for row, col in product(range(map_size), repeat=2):
+        num_cols = map_size
+        num_rows = map_size // 2 if num_cols % 2 == 0 else map_size // 2 + 1
+        for row, col in product(range(num_rows), range(num_cols)):
             width_shrinkage = config['width'] / config['shrink_factor'][layer_idx]
             height_shrinkage = config['height'] / config['shrink_factor'][layer_idx]
 

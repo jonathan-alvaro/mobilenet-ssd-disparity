@@ -14,7 +14,7 @@ from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model, calculate_map
 
 
-def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
+def eval(config: dict, model_path='checkpoints/model_epoch20.pth'):
     ssd = build_model(config, is_test=True)
     ssd.load_state_dict(torch.load(model_path))
     ssd.train(False)
@@ -23,7 +23,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
 
     data_transform = transforms.Compose([
         transforms.ToRelativeBoxes(),
-        transforms.Resize(config['image_size']),
+        transforms.Resize(config['width'], config['height']),
         transforms.Scale(),
         transforms.ToTensor()
     ])
@@ -45,12 +45,15 @@ def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
 
     print(labels)
     test_image.save("predict.jpg")
+    print(disparity.shape)
     disparity = disparity[0].cpu().numpy()
     gt_disparity = val_set.get_disparity(2)[0]
     gt_disparity = gt_disparity.numpy()
-    gt_disparity = cv2.resize(gt_disparity, (94, 94))
+    gt_disparity = cv2.resize(gt_disparity, (118, 70))
     print("None zero gt disparity:", sum((gt_disparity == 0).flatten()))
     print("Mean normalized gt disparity:", (gt_disparity / 126).flatten().mean())
+    print(gt_disparity.shape)
+    print(disparity.shape)
     diff = gt_disparity - disparity
     print("Max prediction value:", disparity.max())
     print("Mean prediction value:", disparity.flatten().mean())

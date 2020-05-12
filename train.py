@@ -3,6 +3,7 @@ import os
 import sys
 import json
 
+import cv2
 import torch
 from torch.optim import SGD
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -105,6 +106,9 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             optimizer.zero_grad()
 
             confidences, locations, disparity = ssd(images)
+            test_disparity = disparity[0][0].cpu().detach().numpy()
+            print(test_disparity.shape)
+            cv2.imwrite('test_disparity.png', test_disparity)
 
             regression_loss, classification_loss, mask = criterion.forward(confidences, locations, labels, gt_locations)
             with torch.no_grad():
@@ -149,4 +153,4 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
 starting_epoch = int(input("Starting Epoch: "))
 end_epoch = int(input("End Epoch: "))
-train_ssd(starting_epoch, end_epoch, network_config, redirect_output=True)
+train_ssd(starting_epoch, end_epoch, network_config, redirect_output=False)

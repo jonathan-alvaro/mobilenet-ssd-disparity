@@ -21,7 +21,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch40.pth'):
 
     data_transform = transforms.Compose([
         transforms.ToRelativeBoxes(),
-        transforms.Resize(config['image_size']),
+        transforms.Resize(config['width'], config['height'])
         transforms.Scale(),
         transforms.ToTensor()
     ])

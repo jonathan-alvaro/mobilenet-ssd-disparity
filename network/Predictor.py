@@ -11,7 +11,7 @@ class Predictor:
     def __init__(self, net: IntegratedModel,
                  iou_threshold: float = 0.5):
         self._net = net
-        self._resize = transforms.Resize((400, 200))
+        self._resize = transforms.Resize((200, 400))
         self._to_tensor = transforms.ToTensor()
         self._threshold = iou_threshold
 
