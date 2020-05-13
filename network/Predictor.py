@@ -38,13 +38,13 @@ class Predictor:
             probs = conf[..., class_index]
             mask = probs > prob_threshold
             class_mask = prediction_labels == class_index
-            probs = probs[class_mask]
+            probs = probs[class_mask & mask]
             if probs.size(0) == 0:
                 print("Class {} has no valid predictions".format(class_index))
                 print("Max prob is {}".format(conf[..., class_index].max()))
                 continue
 
-            boxes_subset = boxes[mask, ...]
+            boxes_subset = boxes[class_mask & mask, ...]
 
             chosen_indices = nms(boxes_subset, probs, self._threshold)
 
