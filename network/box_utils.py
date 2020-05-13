@@ -11,12 +11,10 @@ def generate_priors(config: dict) -> torch.Tensor:
         num_cols = map_size
         num_rows = map_size // 2 if num_cols % 2 == 0 else map_size // 2 + 1
         for row, col in product(range(num_rows), range(num_cols)):
-            width_shrinkage = config['width'] / config['shrink_factor'][layer_idx]
-            height_shrinkage = config['height'] / config['shrink_factor'][layer_idx]
 
             # Calculate center for box in position (row, col)
-            cx = (col + 0.5) / width_shrinkage
-            cy = (row + 0.5) / height_shrinkage
+            cx = (col + 0.5) / num_cols
+            cy = (row + 0.5) / num_rows
 
             # Create small box
             w = config['min_size'][layer_idx] / config['width']
