@@ -1,24 +1,22 @@
 import itertools
+import json
 import os
 import sys
-import json
 
 import cv2
+import numpy as np
 import torch
 from torch.optim import SGD
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
-import numpy as np
 
-from dataset.CustomRMSE import CustomRMSE
-from dataset.BerHuLoss import BerHuLoss
 from dataset.CityscapesDataset import CityscapesDataset
+from dataset.CustomRMSE import CustomRMSE
 from network import transforms
 from network.MatchPrior import MatchPrior
-from network.box_utils import generate_priors, convert_locations_to_boxes
-from network.mobilenet_ssd_config import network_config
+from network.mobilenet_ssd_config import network_config, priors
 from network.multibox_loss import MultiBoxLoss
-from train_utils import build_model, calculate_map
+from train_utils import build_model
 
 torch.set_default_dtype(torch.float32)
 
@@ -28,8 +26,6 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
               log_folder='log', redirect_output=True):
     if not os.path.isdir(log_folder):
         os.makedirs(log_folder)
-
-    priors = generate_priors(config)
 
     target_transform = MatchPrior(priors, config)
     train_transform = transforms.Compose([
