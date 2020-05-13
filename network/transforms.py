@@ -131,10 +131,7 @@ class RandomExpand:
 class RandomCrop:
     def __init__(self, prob: float = 0.5, min_crop_ratio: float = 0.3):
         self._prob = prob
-        self._sample_modes = ((None, None),
-                              (0.1, None),
-                              (0.3, None),
-                              (0.5, None),
+        self._sample_modes = ((0.5, None),
                               (0.7, None),
                               (0.9, None))
         self._min_crop = min_crop_ratio

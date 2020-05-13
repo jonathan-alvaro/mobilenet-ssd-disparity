@@ -15,7 +15,7 @@ class Predictor:
         self._to_tensor = transforms.ToTensor()
         self._threshold = iou_threshold
 
-    def predict(self, image: Image.Image, prob_threshold=0.25):
+    def predict(self, image: Image.Image, prob_threshold=0.5):
         width, height = image.size
         image = self._resize(image)
         image = self._to_tensor(image)

@@ -16,7 +16,6 @@ class MultiBoxLoss(nn.Module):
         self._threshold = iou_threshold
         self._background_label = background_label
         self._neg_pos_ratio = mining_ratio
-        self._variances = config['variance']
 
     def forward(self, confidence, locations, labels, gt_locations):
         num_classes = confidence.size(2)
