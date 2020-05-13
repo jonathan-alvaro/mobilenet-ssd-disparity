@@ -101,6 +101,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             confidences, locations, disparity = ssd(images)
             test_disparity = disparity[0][0].cpu().detach().numpy()
+            cv2.imwrite('test_disparity.png', test_disparity)
 
             regression_loss, classification_loss, mask = criterion.forward(confidences, locations, labels, gt_locations)
             with torch.no_grad():
@@ -114,7 +115,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                     prediction_count[item.item()] += prediction_counts[i].item()
 
             disparity_loss = disparity_criterion(disparity.squeeze(), gt_disparity)
-            loss = regression_loss + classification_loss + disparity_loss
+            loss = regression_loss + 2 * classification_loss + disparity_loss
             loss.backward()
             optimizer.step()
 
@@ -145,4 +146,4 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
 starting_epoch = int(input("Starting Epoch: "))
 end_epoch = int(input("End Epoch: "))
-train_ssd(starting_epoch, end_epoch, network_config, redirect_output=False)
+train_ssd(starting_epoch, end_epoch, network_config, redirect_output=True)

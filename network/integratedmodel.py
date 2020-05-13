@@ -98,7 +98,7 @@ class IntegratedModel(nn.Module):
         locations = torch.cat(locations, 1)
 
         if self._test:
-            confidences = F.softmax(confidences, dim=2)
+            confidences = F.softmax(confidences, dim=confidences.dim() - 1)
             boxes = convert_locations_to_boxes(locations, self._priors,
                                                self._config['variance'][0], self._config['variance'][1])
             boxes = center_to_corner(boxes)

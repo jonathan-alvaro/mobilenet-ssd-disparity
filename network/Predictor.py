@@ -38,10 +38,10 @@ class Predictor:
             probs = conf[..., class_index]
             mask = probs > prob_threshold
             class_mask = prediction_labels == class_index
-            print(class_mask.shape)
-            print(mask.shape)
-            probs = probs[mask & class_mask]
+            probs = probs[class_mask]
             if probs.size(0) == 0:
+                print("Class {} has no valid predictions".format(class_index))
+                print("Max prob is {}".format(conf[..., class_index].max()))
                 continue
 
             boxes_subset = boxes[mask, ...]
