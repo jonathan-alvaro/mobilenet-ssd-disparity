@@ -1,4 +1,5 @@
 import math
+import time
 import cv2
 import numpy as np
 
@@ -14,7 +15,7 @@ from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model, calculate_map
 
 
-def eval(config: dict, model_path='checkpoints/model_epoch7.pth'):
+def eval(config: dict, model_path='checkpoints/model_epoch8.pth'):
     ssd = build_model(config, is_test=True)
     ssd.load_state_dict(torch.load(model_path))
     ssd.train(False)
@@ -32,9 +33,12 @@ def eval(config: dict, model_path='checkpoints/model_epoch7.pth'):
 
     val_set = CityscapesDataset(config, 'dataset/train', None, data_transform, target_transform, True)
 
-    test_image = val_set.get_image(2)
+    test_image = val_set.get_image(5)
     
-    boxes, labels, conf, disparity, _ = net.predict(test_image)
+    for _ in range(2):
+        start = time.time()
+        boxes, labels, conf, disparity, _ = net.predict(test_image)
+        print("Prediction time:", time.time() - start)
     
     drawer = Draw(test_image)
     
@@ -46,10 +50,11 @@ def eval(config: dict, model_path='checkpoints/model_epoch7.pth'):
     print(labels)
     test_image.save("predict.jpg")
     print(disparity.shape)
-    disparity = disparity[0].cpu().numpy()
-    gt_disparity = val_set.get_disparity(2)[0]
+    print("Cuda:", disparity.is_cuda)
+    disparity = disparity[0].cpu().numpy() * 223
+    gt_disparity = val_set.get_disparity(1)[0]
     gt_disparity = gt_disparity.numpy()
-    gt_disparity = cv2.resize(gt_disparity, (118, 70))
+    gt_disparity = cv2.resize(gt_disparity, (100, 50))
     print("None zero gt disparity:", sum((gt_disparity == 0).flatten()))
     print("Mean normalized gt disparity:", (gt_disparity / 126).flatten().mean())
     print(gt_disparity.shape)

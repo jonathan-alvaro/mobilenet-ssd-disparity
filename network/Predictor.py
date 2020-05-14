@@ -9,11 +9,14 @@ from network.integratedmodel import IntegratedModel
 
 class Predictor:
     def __init__(self, net: IntegratedModel,
-                 iou_threshold: float = 0.5):
+            iou_threshold: float = 0.5, use_cuda: bool = False):
         self._net = net
         self._resize = transforms.Resize((200, 400))
         self._to_tensor = transforms.ToTensor()
         self._threshold = iou_threshold
+
+        if use_cuda:
+            self._net = self._net.cuda()
 
     def predict(self, image: Image.Image, prob_threshold=0.5):
         width, height = image.size
