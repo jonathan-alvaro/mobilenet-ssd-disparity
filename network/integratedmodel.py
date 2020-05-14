@@ -10,32 +10,56 @@ from .mobilenet_ssd_config import priors
 
 
 class UpsamplingBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, is_test: bool = False):
+    def __init__(self, in_channels: int, expand_factor: int = 2, is_test: bool = False):
         super().__init__()
-        self.unpool = nn.MaxUnpool2d(2, stride=2)
-        self.pool = nn.MaxPool2d(2, stride=2, return_indices=True)
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=2, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.expand = nn.PixelShuffle(2)
+
+        out_channels = int(in_channels / 4)
+
+        self.conv1 = nn.Conv2d(out_channels, 6 * out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv2 = nn.Conv2d(6 * out_channels, 6 * out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv3 = nn.Conv2d(6 * out_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
 
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
-        input_size = x.size()
-        _, indices = self.pool(torch.empty(input_size[0], input_size[1], input_size[2] * 2, input_size[3] * 2))
+        x = self.expand(x)
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        return x
 
-        out = self.unpool(x.cuda(), indices.cuda())
-        out = out.cpu()
-        residual = self.conv1(out)
-        residual = self.bn1(residual)
 
-        out = self.conv1(out)
-        out = self.bn1(residual)
-        out = self.relu(out)
-        out = self.conv2(out)
-        out = self.bn2(residual)
-        out += residual
-        return out
+class DepthNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.upsampling1 = UpsamplingBlock(1024, 2)
+        self.upsampling2 = UpsamplingBlock(768, 2)
+        self.upsampling3 = UpsamplingBlock(448, 2)
+
+        self.prediction1 = nn.Conv2d(256, 1, kernel_size=3, padding=1, bias=False, stride=1)
+        self.prediction2 = nn.Conv2d(192, 1, kernel_size=3, padding=1, bias=False, stride=1)
+        self.prediction3 = nn.Conv2d(112, 1, kernel_size=3, padding=1, bias=False, stride=1)
+
+    def __call__(self, features: List[torch.Tensor]):
+        """
+        Performs multi-scale upsampling to produce a depth map
+        """
+        disparities = []
+
+        disparity1 = self.upsampling1(features[0])
+        disparity1 = disparity1[..., 1:, 1:]
+        disparities.append(self.prediction1(disparity1))
+        disparity1 = torch.cat([disparity1, features[1]], dim=1)
+
+        disparity2 = self.upsampling2(disparity1)
+        disparity2 = disparity2[..., :, 1:]
+        disparities.append(self.prediction2(disparity2))
+        disparity2 = torch.cat([disparity2, features[2]], dim=1)
+
+        disparity3 = self.upsampling3(disparity2)
+        disparities.append(self.prediction3(disparity3))
+
+        return disparities
 
 
 class IntegratedModel(nn.Module):
@@ -50,18 +74,8 @@ class IntegratedModel(nn.Module):
         self.extras = extras
         self.location_headers = location_headers
         self.class_headers = class_headers
-        self.upsampling = nn.Sequential(
-            UpsamplingBlock(1024, 512),
-            nn.ReLU(),
-            UpsamplingBlock(512, 256),
-            nn.ReLU(),
-            UpsamplingBlock(256, 128),
-            nn.ReLU(),
-            nn.Conv2d(128, 32, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU()
-        )
+        self.depth_source_layers = [5, 11, 13]
+        self.upsampling = DepthNet()
         if not is_test:
             self.upsampling = self.upsampling.cuda()
         self._test = is_test
@@ -76,13 +90,18 @@ class IntegratedModel(nn.Module):
 
     def forward(self, x):
         sources = []
+        depth_sources = []
 
         for i, net_layer in enumerate(self.extractor.get_layers()):
             x = net_layer(x)
             if i in self.source_layers:
                 sources.append(x)
+            if i in self.depth_source_layers:
+                depth_sources.append(x)
 
-        disparity = self.upsampling(x)
+        depth_sources = list(reversed(depth_sources))
+
+        depth_sources = self.upsampling(depth_sources)
 
         for layer_index, layer in enumerate(self.extras):
             x = layer(x)
@@ -103,9 +122,9 @@ class IntegratedModel(nn.Module):
                                                self._config['variance'][0], self._config['variance'][1])
             boxes = center_to_corner(boxes)
 
-            return confidences, boxes, disparity
+            return confidences, boxes, depth_sources[-1]
 
-        return confidences, locations, disparity
+        return confidences, locations, depth_sources
 
     def compute_confidence(self, x, i):
         confidence = self.class_headers[i](x)

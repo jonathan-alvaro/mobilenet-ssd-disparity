@@ -81,7 +81,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         running_loss = 0.0
         running_regression_loss = 0.0
         running_classification_loss = 0.0
-        running_disparity_loss = 0.0
+        running_disparity_loss = np.array([0, 0, 0])
         num_steps = len(train_loader)
 
         if redirect_output:
@@ -99,9 +99,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             gt_disparity = gt_disparity
             optimizer.zero_grad()
 
-            confidences, locations, disparity = ssd(images)
-            test_disparity = disparity[0][0].cpu().detach().numpy()
-            cv2.imwrite('test_disparity.png', test_disparity)
+            confidences, locations, disparities = ssd(images)
 
             regression_loss, classification_loss, mask = criterion.forward(confidences, locations, labels, gt_locations)
             with torch.no_grad():
@@ -114,15 +112,32 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                 for i, item in enumerate(prediction_labels):
                     prediction_count[item.item()] += prediction_counts[i].item()
 
-            disparity_loss = disparity_criterion(disparity.squeeze(), gt_disparity)
-            loss = regression_loss + 2 * classification_loss + disparity_loss
+            disparity_losses = []
+            for i in range(len(disparities)):
+                disparity = disparities[i]
+                scale_gt_disparity = []
+                for img in gt_disparity:
+                    if i == len(disparities) - 1:
+                        break
+                    shape = disparity.shape[-2:]
+                    scale_gt_disparity.append(cv2.resize(img.cpu().squeeze().numpy(), shape))
+
+                scale_gt_disparity = torch.from_numpy(np.array(scale_gt_disparity))
+                if i == len(disparities) - 1:
+                    disparity_losses.append(disparity_criterion(disparity.squeeze(), gt_disparity))
+                else:
+                    disparity_losses.append(
+                        disparity_criterion(disparity.squeeze(), scale_gt_disparity.squeeze())
+                    )
+
+            loss = regression_loss + 2 * classification_loss + sum(disparity_losses)
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item()
             running_regression_loss += regression_loss.item()
             running_classification_loss += classification_loss.item()
-            running_disparity_loss += disparity_loss
+            running_disparity_loss += disparity_losses
 
         avg_loss = running_loss / num_steps
         avg_reg_loss = running_regression_loss / num_steps
