@@ -18,5 +18,5 @@ class CustomRMSE(nn.Module):
             pixel_weights = pixel_weights.cuda()
 
         diff = diff.flatten() * pixel_weights
-        diff = diff.sum() / len(diff)
+        diff = diff.sum() / pixel_weights.flatten().sum()
         return torch.sqrt(diff)

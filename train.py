@@ -60,10 +60,10 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
     ssd_params = [
         {'params': ssd.extractor.parameters()},
-        {'params': ssd.extras.parameters()},
+        {'params': ssd.extras.parameters(), 'lr': 0.01},
         {'params': itertools.chain(ssd.class_headers.parameters(),
             ssd.location_headers.parameters()), 'lr': 0.01},
-        {'params': ssd.upsampling.parameters()}
+        {'params': ssd.upsampling.parameters(), 'lr': 0.001, 'momentum': 0.1}
     ]
 
     optimizer = SGD(ssd_params, lr=0.005, momentum=0.9, weight_decay=0.00005, nesterov=True)
@@ -114,7 +114,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             disparity_losses = []
             for i in range(len(disparities)):
-                disparity = disparities[i]
+                disparity = disparities[i] * 223
                 scale_gt_disparity = []
                 for img in gt_disparity:
                     if i == len(disparities) - 1:
