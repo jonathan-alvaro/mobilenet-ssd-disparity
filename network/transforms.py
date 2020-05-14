@@ -107,7 +107,7 @@ class RandomExpand:
         disparity = disparity.numpy()
 
         if random() < self._prob:
-            ratio = uniform(1, 4)
+            ratio = uniform(2.5, 4)
 
             height, width, depth = img.shape
             new_top = int(uniform(0, height * ratio - height))

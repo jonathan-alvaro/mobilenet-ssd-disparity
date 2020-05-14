@@ -36,6 +36,24 @@ class DepthNet(nn.Module):
         self.upsampling2 = UpsamplingBlock(768, 2)
         self.upsampling3 = UpsamplingBlock(448, 2)
 
+        self.bottleneck1 = nn.Sequential(
+            nn.Conv2d(256, 512, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(512, 256, kernel_size=1, stride=1, padding=0, bias=False)
+        )
+
+        self.bottleneck2 = nn.Sequential(
+            nn.Conv2d(192, 384, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.Conv2d(384, 384, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(384, 192, kernel_size=1, stride=1, padding=0, bias=False)
+        )
+
+        self.bottleneck3 = nn.Sequential(
+            nn.Conv2d(112, 224, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.Conv2d(224, 224, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(224, 112, kernel_size=1, stride=1, padding=0, bias=False)
+        )
+
         self.prediction1 = nn.Conv2d(256, 1, kernel_size=3, padding=1, bias=False, stride=1)
         self.prediction2 = nn.Conv2d(192, 1, kernel_size=3, padding=1, bias=False, stride=1)
         self.prediction3 = nn.Conv2d(112, 1, kernel_size=3, padding=1, bias=False, stride=1)
@@ -48,15 +66,18 @@ class DepthNet(nn.Module):
 
         disparity1 = self.upsampling1(features[0])
         disparity1 = disparity1[..., 1:, 1:]
+        disparity1 = self.bottleneck1(disparity1)
         disparities.append(self.prediction1(disparity1))
         disparity1 = torch.cat([disparity1, features[1]], dim=1)
 
         disparity2 = self.upsampling2(disparity1)
         disparity2 = disparity2[..., 1:, :]
+        disparity2 = self.bottleneck2(disparity2)
         disparities.append(self.prediction2(disparity2))
         disparity2 = torch.cat([disparity2, features[2]], dim=1)
 
         disparity3 = self.upsampling3(disparity2)
+        disparity3 = self.bottleneck3(disparity3)
         disparities.append(self.prediction3(disparity3))
 
         return disparities
