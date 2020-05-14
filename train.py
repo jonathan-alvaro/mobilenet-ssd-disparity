@@ -81,7 +81,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         running_loss = 0.0
         running_regression_loss = 0.0
         running_classification_loss = 0.0
-        running_disparity_loss = np.array([0, 0, 0])
+        running_disparity_loss = torch.Tensor([0, 0, 0])
         num_steps = len(train_loader)
 
         if redirect_output:
@@ -120,9 +120,12 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                     if i == len(disparities) - 1:
                         break
                     shape = disparity.shape[-2:]
-                    scale_gt_disparity.append(cv2.resize(img.cpu().squeeze().numpy(), shape))
+                    scale_gt_disparity.append(cv2.resize(img.cpu().squeeze().numpy(), (shape[1], shape[0])))
 
                 scale_gt_disparity = torch.from_numpy(np.array(scale_gt_disparity))
+                if disparity.is_cuda:
+                    scale_gt_disparity = scale_gt_disparity.cuda()
+                    
                 if i == len(disparities) - 1:
                     disparity_losses.append(disparity_criterion(disparity.squeeze(), gt_disparity))
                 else:
@@ -137,7 +140,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             running_loss += loss.item()
             running_regression_loss += regression_loss.item()
             running_classification_loss += classification_loss.item()
-            running_disparity_loss += disparity_losses
+            running_disparity_loss += torch.Tensor(disparity_losses)
 
         avg_loss = running_loss / num_steps
         avg_reg_loss = running_regression_loss / num_steps
@@ -148,7 +151,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         print("Average Loss: {:.2f}".format(avg_loss))
         print("Average Regression Loss: {:.2f}".format(avg_reg_loss))
         print("Average Classification Loss: {:.2f}".format(avg_class_loss))
-        print("Average Disparity Loss: {:.2f}".format(avg_disp_loss))
+        print("Average Disparity Loss: {}".format(avg_disp_loss))
         print("Training label: {}".format(label_count))
 
         torch.save(ssd.state_dict(), os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, epoch)))

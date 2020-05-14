@@ -52,7 +52,7 @@ class DepthNet(nn.Module):
         disparity1 = torch.cat([disparity1, features[1]], dim=1)
 
         disparity2 = self.upsampling2(disparity1)
-        disparity2 = disparity2[..., :, 1:]
+        disparity2 = disparity2[..., 1:, :]
         disparities.append(self.prediction2(disparity2))
         disparity2 = torch.cat([disparity2, features[2]], dim=1)
 
