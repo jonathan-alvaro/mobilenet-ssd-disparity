@@ -36,9 +36,9 @@ class BottleneckBlock(nn.Module):
         self.conv3 = nn.Conv2d(6 * in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
 
     def __call__(self, x: torch.Tensor):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
         return x
 
 
@@ -49,7 +49,6 @@ class DepthNet(nn.Module):
         self.upsampling1 = UpsamplingBlock(1024, 2)
         self.upsampling2 = UpsamplingBlock(768, 2)
         self.upsampling3 = UpsamplingBlock(448, 2)
-
 
         self.bottleneck1 = BottleneckBlock(256, 256)
 
