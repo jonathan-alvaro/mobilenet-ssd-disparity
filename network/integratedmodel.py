@@ -28,6 +28,20 @@ class UpsamplingBlock(nn.Module):
         return x
 
 
+class BottleneckBlock(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_channels, 6 * in_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv2 = nn.Conv2d(6 * in_channels, 6 * in_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv3 = nn.Conv2d(6 * in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+
+    def __call__(self, x: torch.Tensor):
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        return x
+
+
 class DepthNet(nn.Module):
     def __init__(self):
         super().__init__()
@@ -36,32 +50,11 @@ class DepthNet(nn.Module):
         self.upsampling2 = UpsamplingBlock(768, 2)
         self.upsampling3 = UpsamplingBlock(448, 2)
 
-        self.bottleneck1 = nn.Sequential(
-            nn.Conv2d(256, 512, kernel_size=1, stride=1, padding=0, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(512, 256, kernel_size=1, stride=1, padding=0, bias=False),
-            nn.ReLU()
-        )
+        self.bottleneck1 = BottleneckBlock(256, 256)
 
-        self.bottleneck2 = nn.Sequential(
-            nn.Conv2d(192, 384, kernel_size=1, stride=1, padding=0, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(384, 384, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(384, 192, kernel_size=1, stride=1, padding=0, bias=False),
-            nn.ReLU()
-        )
+        self.bottleneck2 = BottleneckBlock(192, 192)
 
-        self.bottleneck3 = nn.Sequential(
-            nn.Conv2d(112, 224, kernel_size=1, stride=1, padding=0, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(224, 224, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(224, 112, kernel_size=1, stride=1, padding=0, bias=False),
-            nn.ReLU()
-        )
+        self.bottleneck3 = BottleneckBlock(112, 112)
 
         self.prediction1 = nn.Conv2d(256, 1, kernel_size=3, padding=1, bias=False, stride=1)
         self.prediction2 = nn.Conv2d(192, 1, kernel_size=3, padding=1, bias=False, stride=1)
