@@ -41,7 +41,6 @@ def build_model(config: dict, is_test: bool = False) -> IntegratedModel:
     ])
 
     location_headers = nn.ModuleList([
-        nn.Conv2d(in_channels=256, out_channels=10 * 4, kernel_size=3, padding=1),
         nn.Conv2d(in_channels=512, out_channels=10 * 4, kernel_size=3, padding=1),
         nn.Conv2d(in_channels=1024, out_channels=10 * 4, kernel_size=3, padding=1),
         nn.Conv2d(in_channels=512, out_channels=10 * 4, kernel_size=3, padding=1),
@@ -51,7 +50,6 @@ def build_model(config: dict, is_test: bool = False) -> IntegratedModel:
     ])
 
     classification_headers = nn.ModuleList([
-        nn.Conv2d(in_channels=256, out_channels=10 * config['num_classes'], kernel_size=3, padding=1),
         nn.Conv2d(in_channels=512, out_channels=10 * config['num_classes'], kernel_size=3, padding=1),
         nn.Conv2d(in_channels=1024, out_channels=10 * config['num_classes'], kernel_size=3, padding=1),
         nn.Conv2d(in_channels=512, out_channels=10 * config['num_classes'], kernel_size=3, padding=1),
