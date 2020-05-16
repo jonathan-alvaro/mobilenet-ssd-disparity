@@ -31,9 +31,9 @@ class UpsamplingBlock(nn.Module):
 class BottleneckBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, 6 * in_channels, kernel_size=1, stride=1, padding=0, bias=False)
-        self.conv2 = nn.Conv2d(6 * in_channels, 6 * in_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.conv3 = nn.Conv2d(6 * in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv1 = nn.Conv2d(in_channels, 2 * in_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv2 = nn.Conv2d(2 * in_channels, 2 * in_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv3 = nn.Conv2d(2 * in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
 
     def __call__(self, x: torch.Tensor):
         x = F.relu(self.conv1(x))
@@ -50,11 +50,20 @@ class DepthNet(nn.Module):
         self.upsampling2 = UpsamplingBlock(768, 2)
         self.upsampling3 = UpsamplingBlock(448, 2)
 
-        self.bottleneck1 = BottleneckBlock(256, 256)
+        self.bottleneck1 = nn.Sequential(
+                BottleneckBlock(256, 256),
+                BottleneckBlock(256, 256)
+        )
 
-        self.bottleneck2 = BottleneckBlock(192, 192)
+        self.bottleneck2 = nn.Sequential(
+                BottleneckBlock(192, 192),
+                BottleneckBlock(192, 192)
+        )
 
-        self.bottleneck3 = BottleneckBlock(112, 112)
+        self.bottleneck3 = nn.Sequential(
+                BottleneckBlock(112, 112),
+                BottleneckBlock(112, 112)
+        )
 
         self.prediction1 = nn.Conv2d(256, 1, kernel_size=3, padding=1, bias=False, stride=1)
         self.prediction2 = nn.Conv2d(192, 1, kernel_size=3, padding=1, bias=False, stride=1)
@@ -99,13 +108,14 @@ class IntegratedModel(nn.Module):
         self.class_headers = class_headers
         self.depth_source_layers = [5, 11, 13]
         self.upsampling = DepthNet()
-        if not is_test:
-            self.upsampling = self.upsampling.cuda()
         self._test = is_test
         self._config = config
 
         if is_test:
             self._priors = priors
+
+        self.upsampling = self.upsampling.cuda()
+        self._priors = self._priors.cuda()
 
         self.extras.apply(_xavier_init_)
         self.class_headers.apply(_xavier_init_)

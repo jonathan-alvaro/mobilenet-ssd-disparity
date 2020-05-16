@@ -55,14 +55,14 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             torch.load(os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, start_epoch - 1))))
 
     criterion = MultiBoxLoss(0.5, 0, 3, config)
-    weights = json.load(open('dataset/generated_disparity_weights.json'))
+    weights = json.load(open('dataset/modified_disparity_weights.json'))
     disparity_criterion = CustomRMSE(np.array(weights))
 
     ssd_params = [
         {'params': ssd.extractor.parameters()},
-        {'params': ssd.extras.parameters(), 'lr': 0.01},
+        {'params': ssd.extras.parameters(), 'lr': 0.001},
         {'params': itertools.chain(ssd.class_headers.parameters(),
-            ssd.location_headers.parameters()), 'lr': 0.01},
+            ssd.location_headers.parameters()), 'lr': 0.001},
         {'params': ssd.upsampling.parameters(), 'lr': 0.001, 'momentum': 0.1}
     ]
 

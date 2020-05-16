@@ -28,7 +28,7 @@ class MultiBoxLoss(nn.Module):
         classification_loss = F.cross_entropy(
             confidence.reshape(-1, num_classes), labels[mask], reduction='none'
         )
-        class_weights = torch.Tensor([1, 16, 16, 8, 1, 16])
+        class_weights = torch.Tensor([1.1, 20, 5.5, 2, 1, 32])
         if classification_loss.is_cuda:
             class_weights = class_weights.cuda()
 

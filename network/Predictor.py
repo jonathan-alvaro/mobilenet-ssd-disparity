@@ -14,6 +14,7 @@ class Predictor:
         self._resize = transforms.Resize((200, 400))
         self._to_tensor = transforms.ToTensor()
         self._threshold = iou_threshold
+        self._cuda = use_cuda
 
         if use_cuda:
             self._net = self._net.cuda()
@@ -23,6 +24,9 @@ class Predictor:
         image = self._resize(image)
         image = self._to_tensor(image)
         image = image.unsqueeze(0)
+
+        if self._cuda:
+            image = image.cuda()
 
         with torch.no_grad():
             conf, boxes, disparity = self._net.forward(image)
