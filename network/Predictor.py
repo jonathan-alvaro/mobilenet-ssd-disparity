@@ -20,8 +20,8 @@ class Predictor:
             self._net = self._net.cuda()
 
     def predict(self, image: Image.Image, prob_threshold=0.5):
-        width, height = image.size
         image = self._resize(image)
+        width, height = image.size
         image = self._to_tensor(image)
         image = image.unsqueeze(0)
 
