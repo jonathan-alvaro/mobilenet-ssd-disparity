@@ -9,12 +9,14 @@ class BerHuLoss(nn.Module):
         diff = prediction - target
         abs_diff = diff.abs()
 
-        c = abs_diff.flatten(start_dim=1).max(dim=1)[0] / 5
-        c = c.view((-1, 1, 1))
-        c = c.repeat(1, diff.shape[1], diff.shape[2])
+        c = abs_diff.max() / 5
         cutoff_mask = (abs_diff <= c)
         l2_loss = (diff ** 2 + c ** 2) / (2 * c)
         l2_loss[cutoff_mask] = 0
+        abs_diff[~cutoff_mask] = 0
+
+        print(l2_loss)
+        print(abs_diff)
 
         loss = l2_loss + abs_diff
         return loss.flatten().mean()

@@ -29,7 +29,7 @@ class MultiBoxLoss(nn.Module):
             confidence.reshape(-1, num_classes), labels[mask], reduction='none'
         )
 
-        class_weights = torch.Tensor([1, 2, 1])
+        class_weights = torch.Tensor([1, 2.5, 1])
         if confidence.is_cuda:
             class_weights = class_weights.cuda()
         loss_weights = class_weights[labels[mask]]
