@@ -113,9 +113,9 @@ class IntegratedModel(nn.Module):
 
         if is_test:
             self._priors = priors
+            self._priors = self._priors.cuda()
 
         self.upsampling = self.upsampling.cuda()
-        self._priors = self._priors.cuda()
 
         self.extras.apply(_xavier_init_)
         self.class_headers.apply(_xavier_init_)

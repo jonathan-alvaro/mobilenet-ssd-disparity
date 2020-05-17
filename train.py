@@ -62,11 +62,11 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         {'params': ssd.extractor.parameters()},
         {'params': ssd.extras.parameters(), 'lr': 0.001},
         {'params': itertools.chain(ssd.class_headers.parameters(),
-            ssd.location_headers.parameters()), 'lr': 0.001},
-        {'params': ssd.upsampling.parameters(), 'lr': 0.001, 'momentum': 0.1}
+            ssd.location_headers.parameters()), 'lr': 0.003},
+        {'params': ssd.upsampling.parameters(), 'lr': 0.001}
     ]
 
-    optimizer = SGD(ssd_params, lr=0.005, momentum=0.9, weight_decay=0.00005, nesterov=True)
+    optimizer = SGD(ssd_params, lr=0.005, momentum=0.9, weight_decay=0.0005, nesterov=True)
     lr_scheduler = CosineAnnealingLR(optimizer, 60, eta_min=0, last_epoch=-1)
     if os.path.isfile(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))):
         print("Loading previous optimizer")

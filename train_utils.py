@@ -62,7 +62,7 @@ def build_model(config: dict, is_test: bool = False) -> IntegratedModel:
     mobilenet.load('mobilenetv1.pth')
 
     ssd = IntegratedModel(
-        config['num_classes'], [5, 11, 13], mobilenet, extra_layers,
+        config['num_classes'], [11, 13], mobilenet, extra_layers,
         location_headers, classification_headers, config, is_test
     )
     return ssd

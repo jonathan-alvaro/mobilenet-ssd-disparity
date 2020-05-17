@@ -1,10 +1,12 @@
 import torch
 from torchvision import transforms
 from PIL import Image
+import numpy as np
 
 from network.box_utils import nms, convert_locations_to_boxes, generate_priors
 from network.mobilenet_ssd_config import priors
 from network.integratedmodel import IntegratedModel
+from network.transforms import *
 
 
 class Predictor:
@@ -12,6 +14,11 @@ class Predictor:
             iou_threshold: float = 0.5, use_cuda: bool = False):
         self._net = net
         self._resize = transforms.Resize((200, 400))
+        self._pre_transform = Compose([
+            Resize(400, 200),
+            Scale(),
+            ToTensor()
+        ])
         self._to_tensor = transforms.ToTensor()
         self._threshold = iou_threshold
         self._cuda = use_cuda
@@ -20,9 +27,9 @@ class Predictor:
             self._net = self._net.cuda()
 
     def predict(self, image: Image.Image, prob_threshold=0.5):
-        image = self._resize(image)
         width, height = image.size
-        image = self._to_tensor(image)
+        image = np.array(image)
+        image, _, _, _ = self._pre_transform(image)
         image = image.unsqueeze(0)
 
         if self._cuda:

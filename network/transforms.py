@@ -246,7 +246,8 @@ class Resize:
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
         img = cv2.resize(img, (self._width, self._height))
-        disparity = cv2.resize(disparity.astype(float), (100, 50))
+        if disparity is not None:
+            disparity = cv2.resize(disparity.astype(float), (100, 50))
         return img, boxes, labels, disparity
 
 
@@ -269,7 +270,8 @@ class ToTensor:
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
         img = torch.tensor(img).float()
-        disparity = torch.tensor(disparity).float()
+        if disparity is not None:
+            disparity = torch.tensor(disparity).float()
         img = img.permute((2, 0, 1))
 
         return img, boxes, labels, disparity
