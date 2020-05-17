@@ -20,7 +20,7 @@ from network.multibox_loss import MultiBoxLoss
 from train_utils import build_model
 
 torch.set_default_dtype(torch.float32)
-
+torch.autograd.set_detect_anomaly(True)
 
 def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = True, model_name='model',
               checkpoint_folder='checkpoints',
@@ -62,7 +62,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         {'params': ssd.extractor.parameters()},
         {'params': ssd.extras.parameters(), 'lr': 0.001},
         {'params': itertools.chain(ssd.class_headers.parameters(),
-            ssd.location_headers.parameters()), 'lr': 0.003},
+            ssd.location_headers.parameters()), 'lr': 0.005},
         {'params': ssd.upsampling.parameters(), 'lr': 0.001}
     ]
 
