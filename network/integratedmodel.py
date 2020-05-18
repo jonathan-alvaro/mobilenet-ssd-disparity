@@ -82,7 +82,6 @@ class DepthNet(nn.Module):
         disparity1 = torch.cat([disparity1, features[1]], dim=1)
 
         disparity2 = self.upsampling2(disparity1)
-        disparity2 = disparity2[..., 1:, :]
         disparity2 = self.bottleneck2(disparity2)
         disparities.append(torch.sigmoid(self.prediction2(disparity2)))
         disparity2 = torch.cat([disparity2, features[2]], dim=1)
@@ -113,9 +112,8 @@ class IntegratedModel(nn.Module):
 
         if is_test:
             self._priors = priors
-            self._priors = self._priors.cuda()
 
-        self.upsampling = self.upsampling.cuda()
+        self.upsampling = self.upsampling
 
         self.extras.apply(_xavier_init_)
         self.class_headers.apply(_xavier_init_)

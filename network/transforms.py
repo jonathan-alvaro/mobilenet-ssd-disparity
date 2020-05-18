@@ -107,7 +107,7 @@ class RandomExpand:
         disparity = disparity.numpy()
 
         if random() < self._prob:
-            ratio = uniform(2.5, 4)
+            ratio = uniform(1, 4)
 
             height, width, depth = img.shape
             new_top = int(uniform(0, height * ratio - height))
@@ -116,6 +116,7 @@ class RandomExpand:
             new_width = int(ratio * width)
             new_height = int(ratio * height)
             expanded_image = np.zeros((new_height, new_width, depth), dtype=img.dtype)
+            expanded_image[:, :, :] = 127
             expanded_disparity = np.zeros((new_height, new_width), dtype=disparity.dtype)
             expanded_image[new_top:new_top + height, new_left:new_left + width] = img
             expanded_disparity[new_top:new_top + height, new_left:new_left + width] = disparity
@@ -131,7 +132,10 @@ class RandomExpand:
 class RandomCrop:
     def __init__(self, prob: float = 0.5, min_crop_ratio: float = 0.3):
         self._prob = prob
-        self._sample_modes = ((0.5, None),
+        self._sample_modes = ((None, None),
+                              (0.1, None),
+                              (0.3, None),
+                              (0.5, None),
                               (0.7, None),
                               (0.9, None))
         self._min_crop = min_crop_ratio
@@ -247,7 +251,7 @@ class Resize:
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
         img = cv2.resize(img, (self._width, self._height))
         if disparity is not None:
-            disparity = cv2.resize(disparity.astype(float), (100, 50))
+            disparity = cv2.resize(disparity.astype(float), (76, 76))
         return img, boxes, labels, disparity
 
 
@@ -259,7 +263,7 @@ class Scale:
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
-        return img / 255, boxes, labels, disparity
+        return (img - np.array([127, 127, 127]))/ np.array([128]), boxes, labels, disparity
 
 
 class ToTensor:

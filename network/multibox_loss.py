@@ -26,15 +26,8 @@ class MultiBoxLoss(nn.Module):
 
         confidence = confidence[mask, :]
         classification_loss = F.cross_entropy(
-            confidence.reshape(-1, num_classes), labels[mask], reduction='none'
+            confidence.reshape(-1, num_classes), labels[mask], reduction='sum'
         )
-
-        class_weights = torch.Tensor([1, 2.5, 1])
-        if confidence.is_cuda:
-            class_weights = class_weights.cuda()
-        loss_weights = class_weights[labels[mask]]
-        classification_loss = classification_loss * loss_weights
-        classification_loss = classification_loss.sum()
 
         pos_mask = labels > 0
         locations = locations[pos_mask, :].reshape(-1, 4)
@@ -42,6 +35,4 @@ class MultiBoxLoss(nn.Module):
         smooth_l1_loss = F.smooth_l1_loss(locations, gt_locations, reduction='sum')
         num_pos = gt_locations.size(0)
 
-        mean_weights = class_weights[labels[pos_mask]]
-
-        return smooth_l1_loss / num_pos, classification_loss / mean_weights.sum(), mask
+        return smooth_l1_loss / num_pos, classification_loss / num_pos, mask

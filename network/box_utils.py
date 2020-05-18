@@ -9,7 +9,7 @@ def generate_priors(config: dict) -> torch.Tensor:
 
     for layer_idx, map_size in enumerate(config['feature_size']):
         num_cols = map_size
-        num_rows = map_size // 2 if num_cols % 2 == 0 else map_size // 2 + 1
+        num_rows = map_size
         for row, col in product(range(num_rows), range(num_cols)):
 
             # Calculate center for box in position (row, col)
@@ -32,11 +32,6 @@ def generate_priors(config: dict) -> torch.Tensor:
             w = size / config['width']
             h = size / config['height']
             priors.append([cx, cy, w, h])
-
-            for ratio in config['aspect_ratio'][layer_idx]:
-                factor = math.sqrt(ratio)
-                priors.append([cx, cy, w * factor, h / factor])
-                priors.append([cx, cy, w / factor, h * factor])
 
     priors = torch.tensor(priors).view(-1, 4)
     # Ensure all prior boxes lie within the image

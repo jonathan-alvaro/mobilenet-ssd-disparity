@@ -13,9 +13,9 @@ class Predictor:
     def __init__(self, net: IntegratedModel,
             iou_threshold: float = 0.5, use_cuda: bool = False):
         self._net = net
-        self._resize = transforms.Resize((200, 400))
+        self._resize = transforms.Resize((300, 300))
         self._pre_transform = Compose([
-            Resize(400, 200),
+            Resize(300, 300),
             Scale(),
             ToTensor()
         ])
