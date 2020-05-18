@@ -49,7 +49,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch16.pth'):
     test_image.save("predict.jpg")
     print(disparity.shape)
     print("Cuda:", disparity.is_cuda)
-    disparity = disparity[0].cpu().numpy() * 223
+    disparity = disparity[0].cpu().numpy()
     gt_disparity = val_set.get_disparity(1)[0]
     gt_disparity = gt_disparity.numpy()
     gt_disparity = cv2.resize(gt_disparity, (76, 76))

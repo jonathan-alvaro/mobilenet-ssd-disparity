@@ -9,7 +9,7 @@ class BerHuLoss(nn.Module):
         diff = prediction - target
         abs_diff = diff.abs()
 
-        c = abs_diff.clone().max()
+        c = abs_diff.clone().max().item()
         c = c / 5
         cutoff_mask = (abs_diff <= c)
         l2_loss = (diff ** 2 + c ** 2) / (2 * c)
