@@ -73,6 +73,7 @@ class DepthNet(nn.Module):
         disparities = []
 
         disparity1 = self.upsampling1(features[0])
+        disparity1 = disparity1[..., 1:, 1:]
         disparity1 = self.bottleneck1(disparity1)
         disparities.append(torch.sigmoid(self.prediction1(disparity1)))
         disparity1 = torch.cat([disparity1, features[1]], dim=1)
@@ -126,9 +127,9 @@ class IntegratedModel(nn.Module):
             if i in self.depth_source_layers:
                 depth_sources.append(x)
 
-        depth_sources = list(reversed(depth_sources))
+        # depth_sources = list(reversed(depth_sources))
 
-        depth_sources = self.upsampling(depth_sources)
+        # depth_sources = self.upsampling(depth_sources)
 
         for layer_index, layer in enumerate(self.extras):
             x = layer(x)

@@ -201,7 +201,7 @@ class RandomCrop:
             area = torch.prod(wh, dim=wh.dim() - 1)
 
             # minimum area is 1200 to compensate that image will be resized to 1024 x 512
-            valid_boxes = valid_boxes[area >= 1200]
+            valid_boxes = valid_boxes[area >= 2100]
 
             if valid_boxes.shape[0] <= 0:
                 continue
@@ -259,7 +259,7 @@ class Resize:
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
         img = cv2.resize(img, (self._width, self._height))
         if disparity is not None:
-            disparity = cv2.resize(disparity.astype(float), (256, 256))
+            disparity = cv2.resize(disparity.astype(float), (76, 76))
         return img, boxes, labels, disparity
 
 
