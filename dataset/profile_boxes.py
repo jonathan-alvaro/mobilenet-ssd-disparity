@@ -37,12 +37,22 @@ boxes = load_bounding_boxes()
 centers = (boxes[:, :2] + boxes[:, 2:]) / 2
 dimensions = (boxes[:, 2:] - boxes[:, :2])
 ratios = dimensions[:, 0] / dimensions[:, 1]
-ratios = ratios[ratios < 5.35] # Less than 200 data has ratio bigger than 5.35
+areas = dimensions[:, 0] * dimensions[:, 1]
+mask = areas >= 2100
+
+centers = centers[mask]
+dimensions = dimensions[mask]
+dimensions = dimensions.astype(float)
+dimensions[:, 0] *= 300 / 2048
+dimensions[:, 1] *= 300/ 1024
+dimensions = dimensions.astype(int)
+ratios = ratios[mask]
+ratios = ratios[ratios < 5.35]  # Less than 200 data has ratio bigger than 5.35
 
 cx = np.histogram(centers[:, 0], bins=20)
 cy = np.histogram(centers[:, 1], bins=20)
-width = np.histogram(dimensions[:, 0], bins=6)
-height = np.histogram(dimensions[:, 1], bins=6)
+width = np.histogram(dimensions[:, 0], bins=100)
+height = np.histogram(dimensions[:, 1], bins=100)
 ratios = np.histogram(ratios, bins=6)
 
 cx = [list(item.astype(int)) for item in cx]
@@ -52,12 +62,13 @@ height = [list(item.astype(int)) for item in height]
 ratio = [list(item) for item in ratios]
 
 profile = {
-        'cx':cx,
-        'cy':cy,
-        'width':width,
-        'height':height,
-        'ratio':ratio
+    'cx': cx,
+    'cy': cy,
+    'width': width,
+    'height': height,
+    'ratio': ratio
 }
+
 
 class Int64Encoder(json.JSONEncoder):
     def default(self, obj):
@@ -65,5 +76,6 @@ class Int64Encoder(json.JSONEncoder):
             return int(obj)
         else:
             return super().default(obj)
+
 
 json.dump(profile, open('boxes_profile.json', 'w'), cls=Int64Encoder)

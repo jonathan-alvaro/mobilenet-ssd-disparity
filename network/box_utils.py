@@ -28,7 +28,7 @@ def generate_priors(config: dict) -> torch.Tensor:
                 priors.append([cx, cy, w / factor, h * factor])
 
             # Create big box
-            size = math.sqrt(config['max_size'][layer_idx] * config['min_size'][layer_idx])
+            size = config['max_size'][layer_idx]
             w = size / config['width']
             h = size / config['height']
             priors.append([cx, cy, w, h])
@@ -37,6 +37,18 @@ def generate_priors(config: dict) -> torch.Tensor:
                 factor = math.sqrt(ratio)
                 priors.append([cx, cy, w * factor, h / factor])
                 priors.append([cx, cy, w / factor, h * factor])
+
+            if layer_idx == 0:
+                size = 105
+                w = size / config['width']
+                h = size / config['height']
+                priors.append([cx, cy, w, h])
+
+                for ratio in config['aspect_ratio'][layer_idx]:
+                    factor = math.sqrt(ratio)
+                    priors.append([cx, cy, w * factor, h / factor])
+                    priors.append([cx, cy, w / factor, h * factor])
+
 
     priors = torch.tensor(priors).view(-1, 4)
     # Ensure all prior boxes lie within the image
