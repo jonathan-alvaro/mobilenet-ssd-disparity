@@ -2,6 +2,7 @@ import itertools
 import json
 import os
 import sys
+import time
 
 import cv2
 import numpy as np
@@ -61,7 +62,8 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     ssd_params = [
         {'params': ssd.extras.parameters(), 'lr': 0.001},
         {'params': ssd.class_headers.parameters(), 'lr': 0.001},
-        {'params': ssd.location_headers.parameters(), 'lr': 0.001}
+        {'params': ssd.location_headers.parameters(), 'lr': 0.001},
+        {'params': ssd.upsampling.parameters(), 'lr': 0.001}
     ]
 
     optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005, nesterov=True)
@@ -72,6 +74,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
     for epoch in range(start_epoch, end_epoch):
         print("Epcch {}".format(epoch))
+        start = time.time()
         label_count = [0, 0, 0, 0, 0, 0, 0, 0]
         prediction_count = [0, 0, 0, 0, 0, 0, 0]
 
@@ -109,37 +112,37 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                 for i, item in enumerate(prediction_labels):
                     prediction_count[item.item()] += prediction_counts[i].item()
 
-            # disparity_losses = []
-            # for i in range(len(disparities)):
-                # disparity = disparities[i] * 126
-                # scale_gt_disparity = []
-                # for img in gt_disparity:
-                    # if i == len(disparities) - 1:
-                        # break
-                    # shape = disparity.shape[-2:]
-                    # scale_gt_disparity.append(cv2.resize(img.cpu().squeeze().numpy(), (shape[1], shape[0])))
+            disparity_losses = []
+            for i in range(len(disparities)):
+                disparity = disparities[i] * 126
+                scale_gt_disparity = []
+                for img in gt_disparity:
+                    if i == len(disparities) - 1:
+                        break
+                    shape = disparity.shape[-2:]
+                    scale_gt_disparity.append(cv2.resize(img.cpu().squeeze().numpy(), (shape[1], shape[0])))
 
-                # scale_gt_disparity = torch.from_numpy(np.array(scale_gt_disparity))
-                # if disparity.is_cuda:
-                    # scale_gt_disparity = scale_gt_disparity.cuda()
+                scale_gt_disparity = torch.from_numpy(np.array(scale_gt_disparity))
+                if disparity.is_cuda:
+                    scale_gt_disparity = scale_gt_disparity.cuda()
                     
-                # if i == len(disparities) - 1:
-                    # disparity_losses.append(disparity_criterion(disparity.squeeze(), gt_disparity))
-                # else:
-                    # disparity_losses.append(
-                        # disparity_criterion(disparity.squeeze(), scale_gt_disparity.squeeze())
-                    # )
+                if i == len(disparities) - 1:
+                    disparity_losses.append(disparity_criterion(disparity.squeeze(), gt_disparity))
+                else:
+                    disparity_losses.append(
+                        disparity_criterion(disparity.squeeze(), scale_gt_disparity.squeeze())
+                    )
 
-                # if (disparity.abs() > 1000).any():
-                    # print("Prediction{}:".format(i))
-                    # print(disparity)
-                    # print(images)
-                    # print(disparity_losses)
-                    # raise ValueError
+                if (disparity.abs() > 1000).any():
+                    print("Prediction{}:".format(i))
+                    print(disparity)
+                    print(images)
+                    print(disparity_losses)
+                    raise ValueError
 
-            # disparity_losses = [torch.sqrt(l) for l in disparity_losses]
+            disparity_losses = [torch.sqrt(l) for l in disparity_losses]
 
-            # loss = regression_loss + 2 * classification_loss + sum(disparity_losses)
+            loss = regression_loss + 2 * classification_loss + sum(disparity_losses)
             loss = regression_loss + classification_loss
             loss.backward()
             optimizer.step()
@@ -147,21 +150,22 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             running_loss += loss.item()
             running_regression_loss += regression_loss.item()
             running_classification_loss += classification_loss.item()
-            # running_disparity_loss += torch.Tensor(disparity_losses)
+            running_disparity_loss += torch.tensor(disparity_losses)
 
         avg_loss = running_loss / num_steps
         avg_reg_loss = running_regression_loss / num_steps
         avg_class_loss = running_classification_loss / num_steps
-        # avg_disp_loss = running_disparity_loss / num_steps
+        avg_disp_loss = running_disparity_loss / num_steps
 
         if redirect_output:
             sys.stdout = open(os.path.join(log_folder, 'train_epoch_{}.txt'.format(epoch)), 'w')
 
         print("Epoch {}".format(epoch))
+        print("Time: {.2f}".format(time.time() - start))
         print("Average Loss: {:.2f}".format(avg_loss))
         print("Average Regression Loss: {:.2f}".format(avg_reg_loss))
         print("Average Classification Loss: {:.2f}".format(avg_class_loss))
-        # print("Average Disparity Loss: {}".format(avg_disp_loss))
+        print("Average Disparity Loss: {}".format(avg_disp_loss))
         print("Training label: {}".format(label_count))
 
         if sys.stdout != sys.__stdout__:

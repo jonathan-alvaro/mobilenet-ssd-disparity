@@ -127,9 +127,9 @@ class IntegratedModel(nn.Module):
             if i in self.depth_source_layers:
                 depth_sources.append(x)
 
-        # depth_sources = list(reversed(depth_sources))
+        depth_sources = list(reversed(depth_sources))
 
-        # depth_sources = self.upsampling(depth_sources)
+        depth_sources = self.upsampling(depth_sources)
 
         for layer_index, layer in enumerate(self.extras):
             x = layer(x)
