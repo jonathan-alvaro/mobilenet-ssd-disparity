@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import torch
 from torch.optim import SGD
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
 from torch.utils.data import DataLoader
 
 from dataset.BerHuLoss import BerHuLoss
@@ -59,20 +59,19 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     disparity_criterion = torch.nn.MSELoss()
 
     ssd_params = [
-        {'params': ssd.extractor.parameters()},
         {'params': ssd.extras.parameters(), 'lr': 0.001},
         {'params': ssd.class_headers.parameters(), 'lr': 0.001},
-        {'params': ssd.location_headers.parameters(), 'lr': 0.00001},
-        {'params': ssd.upsampling.parameters(), 'lr': 0.0005}
+        {'params': ssd.location_headers.parameters(), 'lr': 0.001}
     ]
 
-    optimizer = SGD(ssd_params, lr=0.005, momentum=0.9, weight_decay=0.0005, nesterov=True)
-    lr_scheduler = CosineAnnealingLR(optimizer, 60, eta_min=0, last_epoch=-1)
+    optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005, nesterov=True)
+    lr_scheduler = MultiStepLR(optimizer, milestones=[10, 25, 40], gamma=0.1)
     if os.path.isfile(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))):
         optimizer.load_state_dict(
             torch.load(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))))
 
     for epoch in range(start_epoch, end_epoch):
+        print("Epcch {}".format(epoch))
         label_count = [0, 0, 0, 0, 0, 0, 0, 0]
         prediction_count = [0, 0, 0, 0, 0, 0, 0]
 
@@ -83,10 +82,9 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         running_disparity_loss = torch.Tensor([0, 0, 0])
         num_steps = len(train_loader)
 
-        if redirect_output:
-            sys.stdout = open(os.path.join(log_folder, 'train_epoch_{}.txt'.format(epoch)), 'w')
-
         for i, batch in enumerate(train_loader):
+            if i % 10 == 0:
+                print("Step {}".format(i))
             images, gt_locations, labels, gt_disparity = batch
 
             if use_gpu:
@@ -139,6 +137,8 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                     print(disparity_losses)
                     raise ValueError
 
+            disparity_losses = [torch.sqrt(l) for l in disparity_losses]
+
             loss = regression_loss + 2 * classification_loss + sum(disparity_losses)
             loss.backward()
             optimizer.step()
@@ -153,6 +153,9 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         avg_class_loss = running_classification_loss / num_steps
         avg_disp_loss = running_disparity_loss / num_steps
 
+        if redirect_output:
+            sys.stdout = open(os.path.join(log_folder, 'train_epoch_{}.txt'.format(epoch)), 'w')
+
         print("Epoch {}".format(epoch))
         print("Average Loss: {:.2f}".format(avg_loss))
         print("Average Regression Loss: {:.2f}".format(avg_reg_loss))
@@ -160,8 +163,13 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         print("Average Disparity Loss: {}".format(avg_disp_loss))
         print("Training label: {}".format(label_count))
 
-        torch.save(ssd.state_dict(), os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, epoch)))
-        torch.save(optimizer.state_dict(), os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(epoch)))
+        if sys.stdout != sys.__stdout__:
+            sys.stdout.close()
+            sys.stdout = sys.__stdout__
+
+        if epoch % 5 == 0:
+            torch.save(ssd.state_dict(), os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, epoch)))
+            torch.save(optimizer.state_dict(), os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(epoch)))
 
     if sys.stdout != sys.__stdout__:
         sys.stdout.close()
