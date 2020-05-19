@@ -1,12 +1,11 @@
 from random import random, uniform, choice
-
 from typing import Optional, Union
 
 import cv2
-from PIL import Image
-import torch
-from torchvision.transforms import functional as F
 import numpy as np
+import torch
+from PIL import Image
+from torchvision.transforms import functional as F
 
 from network.box_utils import iou
 
@@ -169,13 +168,13 @@ class RandomCrop:
 
             crop_box = np.array([crop_left, crop_top, crop_left + width, crop_top + height])
 
-            iou_scores = iou(torch.tensor(crop_box), boxes.long())
+            iou_scores = iou(torch.tensor(crop_box).float(), boxes)
 
             if float(iou_scores.min()) < min_iou or float(iou_scores.max()) > max_iou:
                 continue
 
             cropped_image = img[crop_box[1]:crop_box[3], crop_box[0]:crop_box[2], :]
-            cropped_disparity =  disparity[crop_box[1]:crop_box[3], crop_box[0]:crop_box[2]]
+            cropped_disparity = disparity[crop_box[1]:crop_box[3], crop_box[0]:crop_box[2]]
 
             box_centers = (boxes[..., :2] + boxes[..., 2:]) / 2
             top_left_mask = (box_centers[..., 0] > crop_box[0]) & (box_centers[..., 1] > crop_box[1])
@@ -197,6 +196,15 @@ class RandomCrop:
             # Adjust the corners to the new coordinates of the cropped image
             valid_boxes[..., :2] -= torch.tensor(crop_box[:2]).float()
             valid_boxes[..., 2:] -= torch.tensor(crop_box[:2]).float()
+
+            wh = valid_boxes[..., 2:] - valid_boxes[..., :2]
+            area = torch.prod(wh, dim=wh.dim() - 1)
+
+            # minimum area is 1200 to compensate that image will be resized to 1024 x 512
+            valid_boxes = valid_boxes[area >= 1200]
+
+            if valid_boxes.shape[0] <= 0:
+                continue
 
             return cropped_image, valid_boxes, valid_labels, cropped_disparity
 
@@ -251,7 +259,7 @@ class Resize:
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
         img = cv2.resize(img, (self._width, self._height))
         if disparity is not None:
-            disparity = cv2.resize(disparity.astype(float), (76, 76))
+            disparity = cv2.resize(disparity.astype(float), (256, 256))
         return img, boxes, labels, disparity
 
 
@@ -263,7 +271,7 @@ class Scale:
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
-        return (img - np.array([127, 127, 127]))/ np.array([128]), boxes, labels, disparity
+        return (img - np.array([127, 127, 127])) / np.array([128]), boxes, labels, disparity
 
 
 class ToTensor:
@@ -273,7 +281,7 @@ class ToTensor:
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
-        img = torch.tensor(img).float()
+        img = torch.from_numpy(img).float()
         if disparity is not None:
             disparity = torch.tensor(disparity).float()
         img = img.permute((2, 0, 1))
@@ -290,7 +298,7 @@ class Compose:
         self._transforms = transforms
 
     def __call__(self, img: Image.Image, boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None, disparity = None):
+                 labels: Optional[torch.Tensor] = None, disparity=None):
         for op in self._transforms:
             img, boxes, labels, disparity = op(img, boxes, labels, disparity)
 
@@ -300,7 +308,7 @@ class Compose:
 class ToOpenCV:
     def __call__(self, img: Union[Image.Image, torch.Tensor, np.ndarray],
                  boxes: Optional[torch.Tensor] = None,
-                 labels: Optional[torch.Tensor] = None, disparity = None):
+                 labels: Optional[torch.Tensor] = None, disparity=None):
         if type(img) == Image.Image:
             img = np.array(img.convert("RGB"))
         elif type(img) == torch.Tensor:

@@ -111,7 +111,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             disparity_losses = []
             for i in range(len(disparities)):
-                disparity = disparities[i] * 223
+                disparity = disparities[i] * 126
                 scale_gt_disparity = []
                 for img in gt_disparity:
                     if i == len(disparities) - 1:

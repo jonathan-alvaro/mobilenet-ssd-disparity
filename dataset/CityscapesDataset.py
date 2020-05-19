@@ -23,8 +23,8 @@ class CityscapesDataset(torch.utils.data.Dataset):
     IMAGE_FOLDER = "images"
     ANNOTATION_FOLDER = "bounding_boxes"
     ANNOTATION_SUFFIX = "_gtFine_boxes.json"
-    DISPARITY_SUFFIX = ".png"
-    DISPARITY_FOLDER = "generated_disparity"
+    DISPARITY_SUFFIX = "_disparity.png"
+    DISPARITY_FOLDER = "disparity"
 
     def __init__(self, config: dict, root_dir: str, train_transform: Optional[transforms.Compose],
                  data_transform: Optional[transforms.Compose],
@@ -82,7 +82,6 @@ class CityscapesDataset(torch.utils.data.Dataset):
 
         return torch.tensor(disparity).unsqueeze(0)
 
-
     def get_image(self, index: int) -> PIL.Image.Image:
         image_id = self._get_image_id(index)
         image_file = image_id + self.IMAGE_SUFFIX
@@ -104,9 +103,19 @@ class CityscapesDataset(torch.utils.data.Dataset):
         labels = []
 
         for item in annotation['objects']:
-            if item['label'] in label_mapping:
-                labels.append(item['label'])
-                boxes.append(item['bounding_box'])
+            if item['label'] not in label_mapping:
+                continue
+
+            box = item['bounding_box']
+            tl = np.array(box[:2])
+            br = np.array(box[2:])
+            wh = br - tl
+            area = np.product(wh)
+            if area < 300:
+                continue
+
+            labels.append(item['label'])
+            boxes.append(item['bounding_box'])
 
         boxes = torch.tensor(boxes, dtype=torch.float32).clamp(0)
         labels = torch.tensor([label_mapping[elem] for elem in labels])

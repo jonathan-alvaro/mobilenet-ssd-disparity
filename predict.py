@@ -55,7 +55,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch36.pth'):
     disparity = disparity[0].cpu().numpy()
     gt_disparity = val_set.get_disparity(1)[0]
     gt_disparity = gt_disparity.numpy()
-    gt_disparity = cv2.resize(gt_disparity, (76, 76))
+    gt_disparity = cv2.resize(gt_disparity, (256, 256))
     print("None zero gt disparity:", sum((gt_disparity == 0).flatten()))
     print("Mean normalized gt disparity:", (gt_disparity / 126).flatten().mean())
     print(gt_disparity.shape)
@@ -76,7 +76,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch36.pth'):
     cv2.imwrite('disparity.png', disparity.astype(np.uint8)) 
     cv2.imwrite('disparity-target.png', gt_disparity.astype(np.uint8))
     temp = disparity
-    temp = temp * 223 / temp.max()
+    temp = temp * 126 / temp.max()
     cv2.imwrite('test.png', temp)
 
 eval(network_config)

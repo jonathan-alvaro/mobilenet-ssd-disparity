@@ -73,7 +73,6 @@ class DepthNet(nn.Module):
         disparities = []
 
         disparity1 = self.upsampling1(features[0])
-        disparity1 = disparity1[..., 1:, 1:]
         disparity1 = self.bottleneck1(disparity1)
         disparities.append(torch.sigmoid(self.prediction1(disparity1)))
         disparity1 = torch.cat([disparity1, features[1]], dim=1)

@@ -34,15 +34,15 @@ labels = [
     # Label('terrain', 'nature', 0),
     # Label('sky', 'sky', 0),
     Label('person', 'human', 1),
-    # Label('rider', 'human', 3),
+    Label('rider', 'human', 1),
     Label('car', 'vehicle', 2),
-    Label('truck', 'vehicle', 2),
-    Label('bus', 'vehicle', 2),
-    Label('caravan', 'vehicle', 2),
-    Label('trailer', 'vehicle', 2),
-    Label('train', 'vehicle', 2),
-    Label('motorcycle', 'vehicle', 2),
-    Label('bicycle', 'vehicle', 2),
+    # Label('truck', 'vehicle', 2),
+    # Label('bus', 'vehicle', 2),
+    # Label('caravan', 'vehicle', 2),
+    # Label('trailer', 'vehicle', 2),
+    # Label('train', 'vehicle', 2),
+    # Label('motorcycle', 'vehicle', 2),
+    # Label('bicycle', 'vehicle', 2),
     # Label('license plate', 'vehicle', 7)
 ]
 
