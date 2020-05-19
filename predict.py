@@ -16,7 +16,7 @@ from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model, calculate_map
 
 
-def eval(config: dict, model_path='checkpoints/model_epoch16.pth'):
+def eval(config: dict, model_path='checkpoints/model_epoch36.pth'):
     ssd = build_model(config, is_test=True)
     ssd.load_state_dict(torch.load(model_path))
     ssd.train(False)
@@ -32,11 +32,14 @@ def eval(config: dict, model_path='checkpoints/model_epoch16.pth'):
 
     target_transform = MatchPrior(priors, config)
 
-    val_set = CityscapesDataset(config, 'dataset/val', None, data_transform, target_transform, True)
+    val_set = CityscapesDataset(config, 'dataset/train', None, data_transform, target_transform, True)
 
-    test_image = val_set.get_image(int(sys.argv[1]))
-    
-    boxes, labels, conf, disparity, _ = net.predict(test_image)
+    arg1 = int(sys.argv[1])
+
+    for i in range(arg1):
+        test_image = val_set.get_image(i)
+        
+        boxes, labels, conf, disparity, _ = net.predict(test_image)
     
     drawer = Draw(test_image)
     
@@ -73,7 +76,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch16.pth'):
     cv2.imwrite('disparity.png', disparity.astype(np.uint8)) 
     cv2.imwrite('disparity-target.png', gt_disparity.astype(np.uint8))
     temp = disparity
-    temp = temp * 126 / temp.max()
+    temp = temp * 223 / temp.max()
     cv2.imwrite('test.png', temp)
 
 eval(network_config)

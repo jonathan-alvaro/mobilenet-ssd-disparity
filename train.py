@@ -56,20 +56,19 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             torch.load(os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, start_epoch - 1))))
 
     criterion = MultiBoxLoss(0.5, 0, 3, config)
-    disparity_criterion = BerHuLoss()
+    disparity_criterion = torch.nn.MSELoss()
 
     ssd_params = [
         {'params': ssd.extractor.parameters()},
         {'params': ssd.extras.parameters(), 'lr': 0.001},
-        {'params': itertools.chain(ssd.class_headers.parameters(),
-            ssd.location_headers.parameters()), 'lr': 0.005},
-        {'params': ssd.upsampling.parameters(), 'lr': 0.001}
+        {'params': ssd.class_headers.parameters(), 'lr': 0.001},
+        {'params': ssd.location_headers.parameters(), 'lr': 0.00001},
+        {'params': ssd.upsampling.parameters(), 'lr': 0.0005}
     ]
 
     optimizer = SGD(ssd_params, lr=0.005, momentum=0.9, weight_decay=0.0005, nesterov=True)
     lr_scheduler = CosineAnnealingLR(optimizer, 60, eta_min=0, last_epoch=-1)
     if os.path.isfile(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))):
-        print("Loading previous optimizer")
         optimizer.load_state_dict(
             torch.load(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))))
 
@@ -114,7 +113,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             disparity_losses = []
             for i in range(len(disparities)):
-                disparity = disparities[i]
+                disparity = disparities[i] * 223
                 scale_gt_disparity = []
                 for img in gt_disparity:
                     if i == len(disparities) - 1:
@@ -132,6 +131,13 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                     disparity_losses.append(
                         disparity_criterion(disparity.squeeze(), scale_gt_disparity.squeeze())
                     )
+
+                if (disparity.abs() > 1000).any():
+                    print("Prediction{}:".format(i))
+                    print(disparity)
+                    print(images)
+                    print(disparity_losses)
+                    raise ValueError
 
             loss = regression_loss + 2 * classification_loss + sum(disparity_losses)
             loss.backward()
