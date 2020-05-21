@@ -56,12 +56,12 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         ssd.load_state_dict(
             torch.load(os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, start_epoch - 1))))
 
-    criterion = MultiBoxLoss(0.5, 0, 1.5, config)
+    criterion = MultiBoxLoss(0.5, 0, 2, config)
     disparity_criterion = BerHuLoss()
 
     ssd_params = [
         {'params': ssd.extras.parameters(), 'lr': 0.001},
-        {'params': ssd.class_headers.parameters(), 'lr': 0.001},
+        {'params': ssd.class_headers.parameters(), 'lr': 0.01},
         {'params': ssd.location_headers.parameters(), 'lr': 0.01},
         {'params': ssd.upsampling.parameters(), 'lr': 0.001}
     ]
@@ -114,9 +114,14 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             disparity_loss = disparity_criterion(disparities[-1].squeeze() * 126, gt_disparity)
 
+            temp = next(ssd.upsampling.bottleneck1.parameters()).clone()
+
             loss = regression_loss + classification_loss + disparity_loss
             loss.backward()
             optimizer.step()
+
+            # print("Not training depth regression:", torch.equal(temp.data, next(ssd.upsampling.bottleneck1.parameters()).data))
+            # print(disparity_loss)
 
             running_loss += loss.item()
             running_regression_loss += regression_loss.item()
