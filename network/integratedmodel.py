@@ -62,9 +62,7 @@ class DepthNet(nn.Module):
                 BottleneckBlock(112, 112),
         )
 
-        self.prediction1 = nn.Conv2d(256, 1, kernel_size=3, padding=1, bias=False, stride=1)
-        self.prediction2 = nn.Conv2d(192, 1, kernel_size=3, padding=1, bias=False, stride=1)
-        self.prediction3 = nn.Conv2d(112, 1, kernel_size=3, padding=1, bias=False, stride=1)
+        self.prediction = nn.Conv2d(112, 1, kernel_size=3, padding=1, bias=False, stride=1)
 
     def __call__(self, features: List[torch.Tensor]):
         """
@@ -75,17 +73,15 @@ class DepthNet(nn.Module):
         disparity1 = self.upsampling1(features[0])
         disparity1 = disparity1[..., 1:, 1:]
         disparity1 = self.bottleneck1(disparity1)
-        disparities.append(torch.sigmoid(self.prediction1(disparity1)))
         disparity1 = torch.cat([disparity1, features[1]], dim=1)
 
         disparity2 = self.upsampling2(disparity1)
         disparity2 = self.bottleneck2(disparity2)
-        disparities.append(torch.sigmoid(self.prediction2(disparity2)))
         disparity2 = torch.cat([disparity2, features[2]], dim=1)
 
         disparity3 = self.upsampling3(disparity2)
         disparity3 = self.bottleneck3(disparity3)
-        disparities.append(torch.sigmoid(self.prediction3(disparity3)))
+        disparities.append(torch.sigmoid(self.prediction(disparity3)))
 
         return disparities
 
