@@ -60,6 +60,7 @@ class DepthNet(nn.Module):
 
         self.bottleneck3 = nn.Sequential(
                 BottleneckBlock(112, 112),
+                BottleneckBlock(112, 112)
         )
 
         self.prediction = nn.Conv2d(112, 1, kernel_size=3, padding=1, bias=False, stride=1)
@@ -81,7 +82,7 @@ class DepthNet(nn.Module):
 
         disparity3 = self.upsampling3(disparity2)
         disparity3 = self.bottleneck3(disparity3)
-        disparities.append(torch.sigmoid(self.prediction(disparity3)))
+        disparities.append(self.prediction(disparity3))
 
         return disparities
 

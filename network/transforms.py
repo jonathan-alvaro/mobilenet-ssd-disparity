@@ -306,7 +306,7 @@ class Scale:
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
-        return (img - np.array([127, 127, 127])) / np.array([128]), boxes, labels, disparity
+        return (img - np.array([127, 127, 127])) / np.array([128]), boxes, labels, disparity / 127
 
 
 class ToTensor:

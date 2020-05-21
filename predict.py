@@ -16,7 +16,7 @@ from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model, calculate_map
 
 
-def eval(config: dict, model_path='checkpoints/model_epoch10.pth'):
+def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
     ssd = build_model(config, is_test=True)
     ssd.load_state_dict(torch.load(model_path))
     ssd.train(False)
@@ -47,13 +47,25 @@ def eval(config: dict, model_path='checkpoints/model_epoch10.pth'):
             top_left = tuple(boxes[j][:2].numpy().flatten())
             bottom_right = tuple(boxes[j][2:].numpy().flatten())
             drawer.rectangle((top_left, bottom_right), width=5)
-            test_image.save('prediction/{}.jpg'.format(i))
+
+        test_image.save('prediction/{}.jpg'.format(i))
+
+        disparity = disparity.cpu().numpy() * 127
+        cv2.applyColorMap(disparity, cv2.COLORMAP_HOT)
+        cv2.imwrite('prediction/{}_disparity.png'.format(i))
+
+        gt_disparity = val_set.get_disparity(1)[0]
+        gt_disparity = gt_disparity.numpy()
+        gt_disparity = cv2.resize(gt_disparity, (76, 76))
+        cv2.applyColorMap(gt_disparity, cv2.COLORMAP_HOT)
+        cv2.imwrite('prediction/{}_target.png'.format(i))
+        
 
     print(labels)
     test_image.save("predict.jpg")
     print(disparity.shape)
     print("Cuda:", disparity.is_cuda)
-    disparity = disparity[0].cpu().numpy()
+    disparity = disparity[0].cpu().numpy() * 127
     gt_disparity = val_set.get_disparity(1)[0]
     gt_disparity = gt_disparity.numpy()
     gt_disparity = cv2.resize(gt_disparity, (76, 76))
