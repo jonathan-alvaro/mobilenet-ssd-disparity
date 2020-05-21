@@ -3,6 +3,7 @@ import math
 import time
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 import torch
 from PIL.ImageDraw import Draw
@@ -51,14 +52,14 @@ def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
         test_image.save('prediction/{}.jpg'.format(i))
 
         disparity = disparity.cpu().numpy() * 127
-        cv2.applyColorMap(disparity, cv2.COLORMAP_HOT)
-        cv2.imwrite('prediction/{}_disparity.png'.format(i))
+        plt.imshow(disparity, cmap='magma')
+        plt.savefig('prediction/{}_disparity.png'.format(i))
 
         gt_disparity = val_set.get_disparity(1)[0]
         gt_disparity = gt_disparity.numpy()
         gt_disparity = cv2.resize(gt_disparity, (76, 76))
-        cv2.applyColorMap(gt_disparity, cv2.COLORMAP_HOT)
-        cv2.imwrite('prediction/{}_target.png'.format(i))
+        plt.imshow(gt_disparity, cmap='magma')
+        plt.savefig('prediction/{}_target.png'.format(i))
         
 
     print(labels)
