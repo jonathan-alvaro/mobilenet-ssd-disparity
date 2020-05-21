@@ -111,7 +111,8 @@ class CityscapesDataset(torch.utils.data.Dataset):
             br = np.array(box[2:])
             wh = br - tl
             area = np.product(wh)
-            if area < 300:
+            # Area should at least be 300 pixels if immediately resized to 300x300
+            if area < 6990.51:
                 continue
 
             labels.append(item['label'])
