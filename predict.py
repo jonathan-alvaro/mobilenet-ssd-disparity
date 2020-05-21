@@ -51,7 +51,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
 
         test_image.save('prediction/{}.jpg'.format(i))
 
-        disparity = disparity.cpu().numpy() * 127
+        disparity = disparity.squeeze().cpu().numpy() * 127
         plt.imshow(disparity, cmap='magma')
         plt.savefig('prediction/{}_disparity.png'.format(i))
 
