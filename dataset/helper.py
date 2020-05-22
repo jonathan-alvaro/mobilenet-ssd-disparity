@@ -47,10 +47,12 @@ labels = [
 ]
 
 label_mapping = {}
+label_decoder = {}
 classes = set()
 
 for label in labels:
     label_mapping[label.label] = label.encoding
+    label_decoder[label.encoding] = label.label
     classes.add(label.encoding)
 
 num_classes = len(classes)

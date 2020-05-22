@@ -11,14 +11,9 @@ from network.transforms import *
 
 class Predictor:
     def __init__(self, net: IntegratedModel,
-            iou_threshold: float = 0.5, use_cuda: bool = False):
+                 iou_threshold: float = 0.5, use_cuda: bool = False):
         self._net = net
         self._resize = transforms.Resize((300, 300))
-        self._pre_transform = Compose([
-            Resize(300, 300),
-            Scale(),
-            ToTensor()
-        ])
         self._to_tensor = transforms.ToTensor()
         self._threshold = iou_threshold
         self._cuda = use_cuda
@@ -26,10 +21,8 @@ class Predictor:
         if use_cuda:
             self._net = self._net.cuda()
 
-    def predict(self, image: Image.Image, prob_threshold=0.5):
-        width, height = image.size
-        image = np.array(image)
-        image, _, _, _ = self._pre_transform(image)
+    def predict(self, image: torch.Tensor, prob_threshold=0.5):
+        height, width = image.shape[-2:]
         image = image.unsqueeze(0)
 
         if self._cuda:
