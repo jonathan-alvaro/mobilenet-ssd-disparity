@@ -105,7 +105,7 @@ class IntegratedModel(nn.Module):
         self._config = config
 
         if is_test:
-            self._priors = priors
+            self._priors = priors.cuda()
 
         self.upsampling = self.upsampling
 

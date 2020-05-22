@@ -21,6 +21,7 @@ args = parser.parse_args()
 def create_predictor(model_path: str):
     model = build_model(network_config, is_test=True)
     model.load_state_dict(torch.load(model_path))
+    model.train(False)
 
     model = Predictor(model, use_cuda=True)
 
@@ -53,6 +54,9 @@ def eval_model(dataset: CityscapesDataset, n: int, model: Predictor, csv_file: s
 
         boxes, labels, probs, disparity, indices = model.predict(img)
 
+        disparity = disparity * 127
+        gt_disparity = gt_disparity * 127
+
         rae.append(relative_absolute_error(disparity, gt_disparity))
         pixel_miss.append(pixel_miss_error(disparity, gt_disparity))
 
@@ -63,7 +67,7 @@ def eval_model(dataset: CityscapesDataset, n: int, model: Predictor, csv_file: s
             prediction_label = labels[j]
             prediction_label = str(prediction_label.item())
 
-            prediction_prob = probs[j]
+            prediction_prob = probs[j].max()
             prediction_prob = str(prediction_prob.item())
 
             target_box = gt_boxes[j].tolist()
@@ -94,4 +98,4 @@ def eval_model(dataset: CityscapesDataset, n: int, model: Predictor, csv_file: s
 
 predictor = create_predictor(args.model_path)
 dataset = create_dataset(args.data_folder)
-print(eval_model(dataset, 100, predictor, 'predictions.csv'))
+print(eval_model(dataset, args.N, predictor, 'predictions.csv'))

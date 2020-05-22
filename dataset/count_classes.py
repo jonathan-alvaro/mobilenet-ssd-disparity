@@ -36,4 +36,4 @@ def count_classes(annotation_dir: str) -> dict:
     return class_counts
 
 
-class_count = count_classes('val/bounding_boxes')
+class_count = count_classes('dataset/val/bounding_boxes')

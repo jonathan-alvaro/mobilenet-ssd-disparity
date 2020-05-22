@@ -52,13 +52,15 @@ class Predictor:
                 continue
 
             boxes_subset = boxes[class_mask & mask, ...]
+            conf_subset = conf[class_mask & mask, ...]
+            indices_subset = torch.tensor(range(len(conf)))[class_mask & mask]
 
             chosen_indices = nms(boxes_subset, probs, self._threshold)
 
             picked_boxes.append(boxes_subset[chosen_indices, ...])
-            picked_probs.append(conf[chosen_indices])
+            picked_probs.append(conf_subset[chosen_indices])
             picked_labels.extend([class_index] * chosen_indices.shape[0])
-            indices.append(chosen_indices.clone())
+            indices.append(indices_subset[chosen_indices].clone())
 
         if len(picked_boxes) == 0:
             return torch.tensor([]), torch.tensor([]), torch.tensor([]), disparity, torch.tensor([])

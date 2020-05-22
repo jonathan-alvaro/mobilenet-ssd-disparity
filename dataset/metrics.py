@@ -6,22 +6,29 @@ from dataset.count_classes import class_count
 
 
 def relative_absolute_error(prediction: torch.Tensor, target: torch.Tensor):
-    abs_diff = (prediction - target).abs()
-    abs_diff /= prediction
+    if prediction.is_cuda:
+        target = target.cuda()
+    abs_diff = (prediction - target) ** 2
+    abs_diff = torch.sqrt(abs_diff.flatten().sum())
 
-    return abs_diff.mean()
+    divisor = target.flatten() ** 2
+    divisor = torch.sqrt(target.sum())
+
+    return (abs_diff / divisor).item()
 
 
 def pixel_miss_error(prediction: torch.Tensor, target: torch.Tensor, threshold: float = 3.0):
+    if prediction.is_cuda:
+        target = target.cuda()
     diff = (prediction - target).abs()
     error_count = (diff > threshold).long().sum()
 
-    return error_count / prediction.flatten().shape[0]
+    return (error_count / prediction.flatten().shape[0]).item()
 
 
 def area(box: np.ndarray):
     dims = box[2:] - box[:2]
-    dims = np.clip(dims, 0)
+    dims = np.clip(dims, 0, None)
     return np.prod(dims)
 
 
@@ -44,6 +51,9 @@ def mean_accurate_precision(prediction_csv_file: str):
 
     for class_label in range(1, num_classes + 1):
         class_rows = predictions[predictions['p_label'] == class_label].copy()
+        if len(class_rows) <= 0:
+            map_by_class.append('na')
+            continue
 
         class_rows['iou'] = class_rows.apply(map_iou, axis=1)
 
@@ -54,6 +64,7 @@ def mean_accurate_precision(prediction_csv_file: str):
 
         class_rows['tp'] = class_rows['tp'].cumsum()
         class_rows['fp'] = class_rows['fp'].cumsum()
+        print(class_rows)
         class_rows['precision'] = class_rows['tp'] / (class_rows['tp'] + class_rows['fp'])
         class_rows['recall'] = class_rows['tp'] / class_count[class_label]
 
@@ -62,7 +73,7 @@ def mean_accurate_precision(prediction_csv_file: str):
 
         transitions = set()
 
-        for i in range(len(precision), 0, -1):
+        for i in range(len(precision) - 1, 0, -1):
             if precision[i - 1] < precision[i]:
                 precision[i - 1] = precision[i]
             if recall[i - 1] == recall[i]:

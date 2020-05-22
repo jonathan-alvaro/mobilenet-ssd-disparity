@@ -17,12 +17,12 @@ from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model, calculate_map
 
 
-def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
+def eval(config: dict, model_path='checkpoints/model_epoch15.pth'):
     ssd = build_model(config, is_test=True)
     ssd.load_state_dict(torch.load(model_path))
     ssd.train(False)
 
-    net = Predictor(ssd)
+    net = Predictor(ssd, use_cuda=True)
 
     data_transform = transforms.Compose([
         transforms.ToRelativeBoxes(),
@@ -39,8 +39,14 @@ def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
 
     for i in range(arg1):
         test_image = val_set.get_image(i)
+        test_image = test_image.resize((300, 300))
+
+        img,_, _, _ = val_set[i]
+        img = img.cuda()
+        print(img)
         
-        boxes, labels, conf, disparity, _ = net.predict(test_image)
+        boxes, labels, conf, disparity, _ = net.predict(img)
+        boxes = boxes.cpu()
     
         drawer = Draw(test_image)
         
@@ -55,7 +61,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
         plt.imshow(disparity, cmap='magma')
         plt.savefig('prediction/{}_disparity.png'.format(i))
 
-        gt_disparity = val_set.get_disparity(1)[0]
+        gt_disparity = val_set.get_disparity(i)[0]
         gt_disparity = gt_disparity.numpy()
         gt_disparity = cv2.resize(gt_disparity, (76, 76))
         plt.imshow(gt_disparity, cmap='magma')
