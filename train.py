@@ -56,14 +56,14 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         ssd.load_state_dict(
             torch.load(os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, start_epoch - 1))))
 
-    criterion = MultiBoxLoss(0.5, 0, 2.5, config)
+    criterion = MultiBoxLoss(0.5, 0, 1.5, config)
     disparity_criterion = BerHuLoss()
 
     ssd_params = [
         {'params': ssd.extras.parameters(), 'lr': 0.001},
         {'params': ssd.class_headers.parameters(), 'lr': 0.01},
         {'params': ssd.location_headers.parameters(), 'lr': 0.01},
-        {'params': ssd.upsampling.parameters(), 'lr': 0.001}
+        {'params': ssd.upsampling.parameters(), 'lr': 0.03}
     ]
 
     optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005, nesterov=True)
