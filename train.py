@@ -112,11 +112,20 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                     label_count[item.item()] += train_counts[j].item()
                 for j, item in enumerate(prediction_labels):
                     prediction_count[item.item()] += prediction_counts[j].item()
-            print((disparities[-1].squeeze() - gt_disparity).abs().mean())
 
-            disparity_loss = torch.sqrt(disparity_criterion(disparities[-1].squeeze(), gt_disparity))
+            disparity = disparities[-1].squeeze()
+            gt_disparity = gt_disparity
 
-            loss = regression_loss + classification_loss + disparity_loss
+            disparity_loss = torch.sqrt(disparity_criterion(disparity, gt_disparity))
+            if j % 10 == 0:
+                print("Mean diff:", (disparity - gt_disparity).abs().mean().item())
+                print("Max diff:", (disparity - gt_disparity).abs().max().item())
+                print("Max:", disparity.max().item(), gt_disparity.max().item())
+                print("Min:", disparity.min().item(), gt_disparity.min().item())
+
+                print("Loss:", disparity_loss.item())
+
+            loss = regression_loss + classification_loss + 10 * disparity_loss
             loss.backward()
             optimizer.step()
 

@@ -12,8 +12,7 @@ from .mobilenet_ssd_config import priors
 class UpsamplingBlock(nn.Module):
     def __init__(self, in_channels: int, expand_factor: int = 2, is_test: bool = False):
         super().__init__()
-        self.pool = nn.MaxPool2d(2, stride=2, return_indices=True)
-        self.unpool = nn.MaxUnpool2d(2, stride=2)
+        self.expand = nn.PixelShuffle(2)
 
         out_channels = int(in_channels / 4)
 
@@ -22,14 +21,7 @@ class UpsamplingBlock(nn.Module):
         self.conv3 = nn.Conv2d(6 * out_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
 
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
-        in_shape = x.shape
-        _, indices = self.pool(torch.empty(*in_shape))
-
-        if x.is_cuda:
-            indices = indices.cuda()
-
-        x = self.unpool(x, indices)
-
+        x = self.expand(x)
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
@@ -74,7 +66,14 @@ class DepthNet(nn.Module):
                 BottleneckBlock(112, 112)
         )
 
-        self.prediction = nn.Conv2d(112, 1, kernel_size=3, padding=1, bias=False, stride=1)
+        self.prediction = nn.Sequential(
+                nn.Conv2d(112, 64, kernel_size=3, padding=1, bias=False, stride=1),
+                nn.ReLU(),
+                nn.Conv2d(64, 32, kernel_size=3, padding=1, bias=False, stride=1),
+                nn.ReLU(),
+                nn.Conv2d(32, 1, kernel_size=3, padding=1, bias=False, stride=1),
+                nn.ReLU()
+        )
 
     def __call__(self, features: List[torch.Tensor]):
         """
