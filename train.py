@@ -111,7 +111,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                 for j, item in enumerate(prediction_labels):
                     prediction_count[item.item()] += prediction_counts[j].item()
 
-            disparity_loss = disparity_criterion(disparities[-1].squeeze() * 126, gt_disparity * 126)
+            disparity_loss = disparity_criterion(disparities[-1].squeeze(), gt_disparity)
 
             loss = regression_loss + classification_loss + disparity_loss
             loss.backward()
