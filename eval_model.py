@@ -8,6 +8,7 @@ from dataset.metrics import relative_absolute_error, pixel_miss_error, mean_accu
 from network import transforms
 from network.MatchPrior import MatchPrior
 from network.Predictor import Predictor
+from network.box_utils import iou
 from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model
 
@@ -36,9 +37,7 @@ def create_dataset(folder_path: str):
         transforms.ToTensor()
     ])
 
-    target_transform = MatchPrior(priors, network_config)
-
-    dataset = CityscapesDataset(network_config, folder_path, None, data_transform, target_transform, True)
+    dataset = CityscapesDataset(network_config, folder_path, None, data_transform, None, True)
 
     return dataset
 
@@ -60,8 +59,14 @@ def eval_model(dataset: CityscapesDataset, n: int, model: Predictor, csv_file: s
         rae.append(relative_absolute_error(disparity, gt_disparity))
         pixel_miss.append(pixel_miss_error(disparity, gt_disparity))
 
+        ious = iou(boxes.unsqueeze(1), gt_boxes.unsqueeze(0))
+
+        best_iou_per_prediction = torch.argmax(ious, dim=ious.dim() - 1)
+
         for j, item in enumerate(boxes):
-            target_label = gt_labels[j]
+            target_index = best_iou_per_prediction[j]
+
+            target_label = gt_labels[target_index]
             target_label = str(target_label.item())
 
             prediction_label = labels[j]
@@ -70,20 +75,20 @@ def eval_model(dataset: CityscapesDataset, n: int, model: Predictor, csv_file: s
             prediction_prob = probs[j].max()
             prediction_prob = str(prediction_prob.item())
 
-            target_box = gt_boxes[j].tolist()
+            target_box = gt_boxes[target_index].tolist()
             target_box = list(map(str, target_box))
 
             prediction_box = item.tolist()
             prediction_box = list(map(str, prediction_box))
 
             prediction_csv_form = ','.join([
-                prediction_label, target_label, prediction_prob, *prediction_box, *target_box
+                prediction_label, target_label, prediction_prob, *prediction_box, *target_box, ious[j].max()
             ])
             prediction_rows.append(prediction_csv_form)
 
     column_headers = [
         'p_label', 't_label', 'p_prob', 'p_left', 'p_top', 'p_right', 'p_bottom',
-        't_left', 't_top', 't_right', 't_bottom'
+        't_left', 't_top', 't_right', 't_bottom', 'iou'
     ]
 
     with open(csv_file, 'w') as f:
