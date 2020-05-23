@@ -12,7 +12,8 @@ from .mobilenet_ssd_config import priors
 class UpsamplingBlock(nn.Module):
     def __init__(self, in_channels: int, expand_factor: int = 2, is_test: bool = False):
         super().__init__()
-        self.expand = nn.PixelShuffle(2)
+        self.pool = nn.MaxPool2d(2, stride=2, return_indices=True)
+        self.unpool = nn.MaxUnpool2d(2, stride=2)
 
         out_channels = int(in_channels / 4)
 
@@ -21,7 +22,14 @@ class UpsamplingBlock(nn.Module):
         self.conv3 = nn.Conv2d(6 * out_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
 
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.expand(x)
+        in_shape = x.shape
+        _, indices = self.pool(torch.empty(*in_shape))
+
+        if x.is_cuda:
+            indices = indices.cuda()
+
+        x = self.unpool(x, indices)
+
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))

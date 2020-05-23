@@ -61,6 +61,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     disparity_criterion = torch.nn.MSELoss()
 
     ssd_params = [
+        {'params': ssd.extractor.parameters(), 'lr': 0.001},
         {'params': ssd.extras.parameters(), 'lr': 0.01},
         {'params': ssd.class_headers.parameters(), 'lr': 0.01},
         {'params': ssd.location_headers.parameters(), 'lr': 0.01},
