@@ -55,8 +55,6 @@ def mean_accurate_precision(prediction_csv_file: str):
             map_by_class.append('na')
             continue
 
-        class_rows['iou'] = class_rows.apply(map_iou, axis=1)
-
         class_rows['tp'] = (class_rows['iou'] >= 0.5) & (class_rows['p_label'] == class_rows['t_label']) & (
                     class_rows['p_label'] == class_label)
         class_rows['fp'] = (class_rows['iou'] >= 0.5) & (class_rows['p_label'] == class_rows['t_label']) & (
@@ -64,7 +62,6 @@ def mean_accurate_precision(prediction_csv_file: str):
 
         class_rows['tp'] = class_rows['tp'].cumsum()
         class_rows['fp'] = class_rows['fp'].cumsum()
-        print(class_rows)
         class_rows['precision'] = class_rows['tp'] / (class_rows['tp'] + class_rows['fp'])
         class_rows['recall'] = class_rows['tp'] / class_count[class_label]
 
