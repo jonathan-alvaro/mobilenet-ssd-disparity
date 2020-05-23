@@ -12,7 +12,7 @@ def relative_absolute_error(prediction: torch.Tensor, target: torch.Tensor):
     abs_diff = torch.sqrt(abs_diff.flatten().sum())
 
     divisor = target.flatten() ** 2
-    divisor = torch.sqrt(target.sum())
+    divisor = torch.sqrt(divisor.sum())
 
     return (abs_diff / divisor).item()
 
