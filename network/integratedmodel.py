@@ -31,9 +31,9 @@ class UpsamplingBlock(nn.Module):
 class BottleneckBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, 2 * in_channels, kernel_size=1, stride=1, padding=0, bias=False)
-        self.conv2 = nn.Conv2d(2 * in_channels, 2 * in_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.conv3 = nn.Conv2d(2 * in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv1 = nn.Conv2d(in_channels, 4 * in_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv2 = nn.Conv2d(4 * in_channels, 4 * in_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv3 = nn.Conv2d(4 * in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
 
     def __call__(self, x: torch.Tensor):
         x = F.relu(self.conv1(x))
@@ -52,10 +52,13 @@ class DepthNet(nn.Module):
 
         self.bottleneck1 = nn.Sequential(
                 BottleneckBlock(256, 256),
+                BottleneckBlock(256, 256),
+                BottleneckBlock(256, 256)
         )
 
         self.bottleneck2 = nn.Sequential(
                 BottleneckBlock(192, 192),
+                BottleneckBlock(192, 192)
         )
 
         self.bottleneck3 = nn.Sequential(
