@@ -57,17 +57,18 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             torch.load(os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, start_epoch - 1))))
 
     criterion = MultiBoxLoss(0.5, 0, 1.5, config)
-    disparity_criterion = BerHuLoss()
+    # disparity_criterion = BerHuLoss()
+    disparity_criterion = torch.nn.MSELoss()
 
     ssd_params = [
         {'params': ssd.extras.parameters(), 'lr': 0.01},
         {'params': ssd.class_headers.parameters(), 'lr': 0.01},
         {'params': ssd.location_headers.parameters(), 'lr': 0.01},
-        {'params': ssd.upsampling.parameters(), 'lr': 0.003}
+        {'params': ssd.upsampling.parameters(), 'lr': 0.01}
     ]
 
     optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005, nesterov=True)
-    lr_scheduler = MultiStepLR(optimizer, milestones=[10, 20, 30, 40, 50, 60], gamma=0.3)
+    lr_scheduler = MultiStepLR(optimizer, milestones=[10, 20, 30, 40, 50], gamma=0.3)
     if os.path.isfile(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))):
         optimizer.load_state_dict(
             torch.load(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))))
@@ -110,8 +111,9 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                     label_count[item.item()] += train_counts[j].item()
                 for j, item in enumerate(prediction_labels):
                     prediction_count[item.item()] += prediction_counts[j].item()
+            print((disparities[-1].squeeze() - gt_disparity).abs().mean())
 
-            disparity_loss = disparity_criterion(disparities[-1].squeeze(), gt_disparity)
+            disparity_loss = torch.sqrt(disparity_criterion(disparities[-1].squeeze(), gt_disparity))
 
             loss = regression_loss + classification_loss + disparity_loss
             loss.backward()

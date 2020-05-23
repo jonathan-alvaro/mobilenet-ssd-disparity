@@ -23,7 +23,7 @@ def pixel_miss_error(prediction: torch.Tensor, target: torch.Tensor, threshold: 
     diff = (prediction - target).abs()
     error_count = (diff > threshold).long().sum()
 
-    return (error_count / prediction.flatten().shape[0]).item()
+    return (error_count.float() / prediction.flatten().shape[0]).item()
 
 
 def area(box: np.ndarray):
@@ -55,9 +55,11 @@ def mean_accurate_precision(prediction_csv_file: str):
             map_by_class.append('na')
             continue
 
+        class_rows.sort_values('p_prob', ascending=False, inplace=True)
+
         class_rows['tp'] = (class_rows['iou'] >= 0.5) & (class_rows['p_label'] == class_rows['t_label']) & (
                     class_rows['p_label'] == class_label)
-        class_rows['fp'] = (class_rows['iou'] >= 0.5) & (class_rows['p_label'] == class_rows['t_label']) & (
+        class_rows['fp'] = (class_rows['iou'] >= 0.5) & (class_rows['p_label'] != class_rows['t_label']) & (
                     class_rows['p_label'] == class_label)
 
         class_rows['tp'] = class_rows['tp'].cumsum()

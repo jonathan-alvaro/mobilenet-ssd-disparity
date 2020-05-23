@@ -43,7 +43,6 @@ def eval(config: dict, model_path='checkpoints/model_epoch15.pth'):
 
         img,_, _, _ = val_set[i]
         img = img.cuda()
-        print(img)
         
         boxes, labels, conf, disparity, _ = net.predict(img)
         boxes = boxes.cpu()

@@ -48,8 +48,12 @@ def eval_model(dataset: CityscapesDataset, n: int, model: Predictor, csv_file: s
     rae = []
     pixel_miss = []
 
+    if n == -1:
+        n = len(dataset)
+
     for i in range(n):
         img, gt_boxes, gt_labels, gt_disparity = dataset[i]
+        gt_boxes = gt_boxes * 300
 
         boxes, labels, probs, disparity, indices = model.predict(img)
 
@@ -59,6 +63,11 @@ def eval_model(dataset: CityscapesDataset, n: int, model: Predictor, csv_file: s
         rae.append(relative_absolute_error(disparity, gt_disparity))
         pixel_miss.append(pixel_miss_error(disparity, gt_disparity))
 
+        if boxes.is_cuda:
+            gt_boxes = gt_boxes.cuda()
+
+        if boxes.shape[0] == 0:
+            continue
         ious = iou(boxes.unsqueeze(1), gt_boxes.unsqueeze(0))
 
         best_iou_per_prediction = torch.argmax(ious, dim=ious.dim() - 1)
@@ -81,8 +90,11 @@ def eval_model(dataset: CityscapesDataset, n: int, model: Predictor, csv_file: s
             prediction_box = item.tolist()
             prediction_box = list(map(str, prediction_box))
 
+            best_iou = ious[j].max()
+            best_iou = str(best_iou.item())
+
             prediction_csv_form = ','.join([
-                prediction_label, target_label, prediction_prob, *prediction_box, *target_box, ious[j].max()
+                prediction_label, target_label, prediction_prob, *prediction_box, *target_box, best_iou
             ])
             prediction_rows.append(prediction_csv_form)
 
