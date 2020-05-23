@@ -63,7 +63,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         {'params': ssd.extras.parameters(), 'lr': 0.01},
         {'params': ssd.class_headers.parameters(), 'lr': 0.01},
         {'params': ssd.location_headers.parameters(), 'lr': 0.01},
-        {'params': ssd.upsampling.parameters(), 'lr': 0.03}
+        {'params': ssd.upsampling.parameters(), 'lr': 0.003}
     ]
 
     optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005, nesterov=True)
@@ -96,7 +96,6 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                 labels = labels.cuda()
                 gt_disparity = gt_disparity.cuda()
 
-            gt_disparity = gt_disparity
             optimizer.zero_grad()
 
             confidences, locations, disparities = ssd(images)
@@ -112,16 +111,11 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                 for j, item in enumerate(prediction_labels):
                     prediction_count[item.item()] += prediction_counts[j].item()
 
-            disparity_loss = disparity_criterion(disparities[-1].squeeze() * 126, gt_disparity)
-
-            temp = next(ssd.upsampling.bottleneck1.parameters()).clone()
+            disparity_loss = disparity_criterion(disparities[-1].squeeze() * 126, gt_disparity * 126)
 
             loss = regression_loss + classification_loss + disparity_loss
             loss.backward()
             optimizer.step()
-
-            # print("Not training depth regression:", torch.equal(temp.data, next(ssd.upsampling.bottleneck1.parameters()).data))
-            # print(disparity_loss)
 
             running_loss += loss.item()
             running_regression_loss += regression_loss.item()
