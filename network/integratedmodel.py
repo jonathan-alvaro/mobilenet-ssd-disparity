@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .box_utils import generate_priors, convert_locations_to_boxes, corner_to_center, center_to_corner
+from .box_utils import convert_locations_to_boxes, center_to_corner
 from .mobilenet import MobileNet
 from .mobilenet_ssd_config import priors
 
@@ -31,9 +31,9 @@ class UpsamplingBlock(nn.Module):
 class BottleneckBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, 4 * in_channels, kernel_size=1, stride=1, padding=0, bias=False)
-        self.conv2 = nn.Conv2d(4 * in_channels, 4 * in_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.conv3 = nn.Conv2d(4 * in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv1 = nn.Conv2d(in_channels, 2 * in_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv2 = nn.Conv2d(2 * in_channels, 2 * in_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv3 = nn.Conv2d(2 * in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
 
     def __call__(self, x: torch.Tensor):
         x = F.relu(self.conv1(x))
@@ -51,20 +51,20 @@ class DepthNet(nn.Module):
         self.upsampling3 = UpsamplingBlock(64, 2)
 
         self.bottleneck1 = nn.Sequential(
-                BottleneckBlock(256, 256)
+            BottleneckBlock(256, 256)
         )
 
         self.bottleneck2 = nn.Sequential(
-                BottleneckBlock(64, 64)
+            BottleneckBlock(64, 64)
         )
 
         self.bottleneck3 = nn.Sequential(
-                BottleneckBlock(16, 16)
+            BottleneckBlock(16, 16)
         )
 
         self.prediction = nn.Sequential(
-                nn.Conv2d(16, 1, kernel_size=3, padding=1, bias=False, stride=1),
-                nn.ReLU()
+            nn.Conv2d(16, 1, kernel_size=3, padding=1, bias=False, stride=1),
+            nn.ReLU()
         )
 
     def __call__(self, features: List[torch.Tensor]):
