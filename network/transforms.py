@@ -123,10 +123,7 @@ class RandomZoom:
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity: Optional[torch.Tensor] = None):
         if random() < self.prob:
-            if random() < self.prob:
-                return self.zoom_out(img, boxes, labels, disparity)
-            else:
-                return self.zoom_in(img, boxes, labels, disparity)
+            return self.zoom_in(img, boxes, labels, disparity)
         else:
             return img, boxes, labels, disparity
 
@@ -295,7 +292,7 @@ class Resize:
         img = cv2.resize(img, (self._width, self._height))
         if disparity is not None:
             disparity = np.array(disparity)
-            disparity = cv2.resize(disparity.astype(float), (76, 76))
+            disparity = cv2.resize(disparity.astype(float), (304, 304))
         return img, boxes, labels, disparity
 
 

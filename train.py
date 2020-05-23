@@ -45,6 +45,8 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     train_set = CityscapesDataset(config, 'dataset/train', train_transform,
                                   data_transform, target_transform)
 
+    _, _, _, temp = train_set[0]
+
     train_loader = DataLoader(train_set, batch_size=32,
                               shuffle=True, num_workers=4)
 
@@ -61,7 +63,6 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     disparity_criterion = torch.nn.MSELoss()
 
     ssd_params = [
-        {'params': ssd.extractor.parameters(), 'lr': 0.001},
         {'params': ssd.extras.parameters(), 'lr': 0.01},
         {'params': ssd.class_headers.parameters(), 'lr': 0.01},
         {'params': ssd.location_headers.parameters(), 'lr': 0.01},
@@ -100,7 +101,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             optimizer.zero_grad()
 
-            confidences, locations, disparities = ssd(images)
+            confidences, locations, disparity = ssd(images)
 
             regression_loss, classification_loss, mask = criterion.forward(confidences, locations, labels, gt_locations)
             with torch.no_grad():
@@ -113,20 +114,16 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                 for j, item in enumerate(prediction_labels):
                     prediction_count[item.item()] += prediction_counts[j].item()
 
-            disparity = disparities[-1].squeeze()
+            disparity = disparity.squeeze()
             gt_disparity = gt_disparity
 
             disparity_loss = torch.sqrt(disparity_criterion(disparity, gt_disparity))
-            if j % 10 == 0:
-                print("Mean diff:", (disparity - gt_disparity).abs().mean().item())
-                print("Max diff:", (disparity - gt_disparity).abs().max().item())
-                print("Max:", disparity.max().item(), gt_disparity.max().item())
-                print("Min:", disparity.min().item(), gt_disparity.min().item())
+            print("Loss:", disparity_loss.item())
 
-                print("Loss:", disparity_loss.item())
-
-            loss = regression_loss + classification_loss + 10 * disparity_loss
+            loss = regression_loss + classification_loss + disparity_loss
             loss.backward()
+            print(ssd.upsampling.prediction[0].weight.grad.max())
+            print(ssd.class_headers[0].weight.grad.max())
             optimizer.step()
 
             running_loss += loss.item()
