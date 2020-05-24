@@ -66,11 +66,11 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         {'params': ssd.extras.parameters(), 'lr': 0.01},
         {'params': ssd.class_headers.parameters(), 'lr': 0.01},
         {'params': ssd.location_headers.parameters(), 'lr': 0.01},
-        {'params': ssd.upsampling.parameters(), 'lr': 0.01}
+        {'params': ssd.upsampling.parameters(), 'lr': 0.001}
     ]
 
     optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005, nesterov=True)
-    lr_scheduler = MultiStepLR(optimizer, milestones=[10, 20, 30, 40, 50], gamma=0.3)
+    lr_scheduler = MultiStepLR(optimizer, milestones=[15, 30, 45], gamma=0.3)
     if os.path.isfile(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))):
         optimizer.load_state_dict(
             torch.load(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))))
@@ -119,16 +119,26 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             for pred in disparities:
                 resize_shape = pred.shape[-2:]
-                scaled_disparity_target = cv2.resize(gt_disparity.cpu().numpy(), (resize_shape[1], resize_shape[0]))
+                scaled_targets = []
+                for img in gt_disparity:
+                    scaled_disparity_target = cv2.resize(img.cpu().squeeze().numpy(), (resize_shape[1], resize_shape[0]))
+                    scaled_targets.append(scaled_disparity_target)
+                scaled_targets = torch.from_numpy(np.array(scaled_targets))
                 if pred.is_cuda:
-                    scaled_disparity_target = scaled_disparity_target.cuda()
-                disparity_targets.append(scaled_disparity_target)
+                    scaled_targets = scaled_targets.cuda()
+                disparity_targets.append(scaled_targets)
 
-            flattened_disparity = torch.cat([torch.flatten(d) for d in disparities])
-            flattened_disparity_target = torch.cat([torch.flatten(t) for t in disparity_targets])
+            disparity_losses = []
+            
+            for k, pred in enumerate(disparities):
+                disparity_losses.append(torch.sqrt(disparity_criterion(pred.squeeze() * 127, disparity_targets[k] * 127)))
 
-            disparity_loss = torch.sqrt(disparity_criterion(flattened_disparity, flattened_disparity_target))
-            print("Loss:", disparity_loss.item())
+            disparity_loss = torch.tensor(0.0)
+            if gt_disparity.is_cuda:
+                disparity_loss = disparity_loss.cuda()
+            for item in disparity_losses:
+                disparity_loss += item
+            print("Loss:", disparity_losses)
 
             loss = regression_loss + classification_loss + disparity_loss
             loss.backward()
