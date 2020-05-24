@@ -52,23 +52,19 @@ class DepthNet(nn.Module):
 
         self.bottleneck1 = nn.Sequential(
             BottleneckBlock(256, 128),
-            BottleneckBlock(128, 128),
-            BottleneckBlock(128, 128)
         )
 
         self.bottleneck2 = nn.Sequential(
             BottleneckBlock(160, 64),
-            BottleneckBlock(64, 64)
         )
 
         self.bottleneck3 = nn.Sequential(
             BottleneckBlock(80, 32),
-            BottleneckBlock(32, 32)
         )
 
-        self.prediction1 = nn.Conv2d(128, 1, kernel_size=3, padding=1, bias=False, stride=1)
-        self.prediction2 = nn.Conv2d(64, 1, kernel_size=3, padding=1, bias=False, stride=1)
-        self.prediction3 = nn.Conv2d(32, 1, kernel_size=3, padding=1, bias=False, stride=1)
+        self.prediction1 = nn.Conv2d(128, 1, kernel_size=1, padding=1, bias=False, stride=1)
+        self.prediction2 = nn.Conv2d(64, 1, kernel_size=1, padding=1, bias=False, stride=1)
+        self.prediction3 = nn.Conv2d(32, 1, kernel_size=1, padding=1, bias=False, stride=1)
 
     def __call__(self, features: List[torch.Tensor]):
         """
