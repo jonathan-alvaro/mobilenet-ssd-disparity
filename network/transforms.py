@@ -292,7 +292,7 @@ class Resize:
         img = cv2.resize(img, (self._width, self._height))
         if disparity is not None:
             disparity = np.array(disparity)
-            disparity = cv2.resize(disparity.astype(float), (304, 304))
+            disparity = cv2.resize(disparity.astype(float), (76, 76))
         return img, boxes, labels, disparity
 
 

@@ -122,8 +122,10 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             loss = regression_loss + classification_loss + disparity_loss
             loss.backward()
-            print(ssd.upsampling.prediction[0].weight.grad.max())
-            print(ssd.class_headers[0].weight.grad.max())
+            print(ssd.upsampling.upsampling3.conv1.weight.grad.max())
+            print(ssd.upsampling.upsampling3.conv1.weight.grad.min())
+            # print(ssd.upsampling.prediction[0].weight.grad.max())
+            # print(ssd.class_headers[0].weight.grad.max())
             optimizer.step()
 
             running_loss += loss.item()
