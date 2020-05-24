@@ -71,10 +71,13 @@ class DepthNet(nn.Module):
         Performs multi-scale upsampling to produce a depth map
         """
         disparity1 = self.upsampling1(features[0])
+        disparity1 = disparity1[..., 1:, 1:]
         disparity1 = self.bottleneck1(disparity1)
+        disparity1 = torch.cat([disparity1, features[1]])
 
         disparity2 = self.upsampling2(disparity1)
         disparity2 = self.bottleneck2(disparity2)
+        disparity2 = torch.cat[disparity2, features[2]]
 
         disparity3 = self.upsampling3(disparity2)
         disparity3 = self.bottleneck3(disparity3)
