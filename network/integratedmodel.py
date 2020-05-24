@@ -59,7 +59,8 @@ class DepthNet(nn.Module):
         )
 
         self.bottleneck3 = nn.Sequential(
-            BottleneckBlock(80, 32),
+            BottleneckBlock(80, 64),
+            BottleneckBlock(64, 32)
         )
 
         self.prediction1 = nn.Conv2d(128, 1, kernel_size=1, padding=1, bias=False, stride=1)

@@ -66,6 +66,7 @@ def mean_accurate_precision(prediction_csv_file: str):
         class_rows['fp'] = class_rows['fp'].cumsum()
         class_rows['precision'] = class_rows['tp'] / (class_rows['tp'] + class_rows['fp'])
         class_rows['recall'] = class_rows['tp'] / class_count[class_label]
+        class_rows = class_rows.fillna(0)
 
         precision = class_rows['precision'].to_numpy()
         recall = class_rows['recall'].to_numpy()
