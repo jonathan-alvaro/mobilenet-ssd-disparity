@@ -101,7 +101,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             optimizer.zero_grad()
 
-            confidences, locations, disparity = ssd(images)
+            confidences, locations, disparities = ssd(images)
 
             regression_loss, classification_loss, mask = criterion.forward(confidences, locations, labels, gt_locations)
             with torch.no_grad():
@@ -114,10 +114,20 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                 for j, item in enumerate(prediction_labels):
                     prediction_count[item.item()] += prediction_counts[j].item()
 
-            disparity = disparity.squeeze()
             gt_disparity = gt_disparity
+            disparity_targets = []
 
-            disparity_loss = torch.sqrt(disparity_criterion(disparity, gt_disparity))
+            for pred in disparities:
+                resize_shape = pred.shape[-2:]
+                scaled_disparity_target = cv2.resize(gt_disparity.cpu().numpy(), (resize_shape[1], resize_shape[0]))
+                if pred.is_cuda:
+                    scaled_disparity_target = scaled_disparity_target.cuda()
+                disparity_targets.append(scaled_disparity_target)
+
+            flattened_disparity = torch.cat([torch.flatten(d) for d in disparities])
+            flattened_disparity_target = torch.cat([torch.flatten(t) for t in disparity_targets])
+
+            disparity_loss = torch.sqrt(disparity_criterion(flattened_disparity, flattened_disparity_target))
             print("Loss:", disparity_loss.item())
 
             loss = regression_loss + classification_loss + disparity_loss

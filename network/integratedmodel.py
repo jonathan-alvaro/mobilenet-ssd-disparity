@@ -66,29 +66,33 @@ class DepthNet(nn.Module):
             BottleneckBlock(32, 32)
         )
 
-        self.prediction = nn.Sequential(
-            nn.Conv2d(32, 1, kernel_size=3, padding=1, bias=False, stride=1)
-        )
+        self.prediction1 = nn.Conv2d(128, 1, kernel_size=3, padding=1, bias=False, stride=1)
+        self.prediction2 = nn.Conv2d(64, 1, kernel_size=3, padding=1, bias=False, stride=1)
+        self.prediction3 = nn.Conv2d(32, 1, kernel_size=3, padding=1, bias=False, stride=1)
 
     def __call__(self, features: List[torch.Tensor]):
         """
         Performs multi-scale upsampling to produce a depth map
         """
+        predictions = []
+
         disparity1 = self.upsampling1(features[0])
         disparity1 = disparity1[..., 1:, 1:]
         disparity1 = self.bottleneck1(disparity1)
+        predictions.append(self.prediction1(disparity1))
         disparity1 = torch.cat([disparity1, features[1]], dim=1)
 
         disparity2 = self.upsampling2(disparity1)
         disparity2 = self.bottleneck2(disparity2)
+        predictions.append(self.prediction2(disparity2))
         disparity2 = torch.cat([disparity2, features[2]], dim=1)
 
         disparity3 = self.upsampling3(disparity2)
         disparity3 = self.bottleneck3(disparity3)
 
-        out = self.prediction(disparity3)
+        predictions.append(self.prediction3(disparity3))
 
-        return out
+        return predictions
 
 
 class IntegratedModel(nn.Module):
