@@ -10,35 +10,24 @@ from .mobilenet_ssd_config import priors
 
 
 class UpsamplingBlock(nn.Module):
-    def __init__(self, in_channels: int, expand_factor: int = 2, is_test: bool = False):
+    def __init__(self, in_channels: int):
         super().__init__()
-        self.expand = nn.PixelShuffle(2)
+        out_channels = int(in_channels / 2)
 
-        out_channels = int(in_channels / 4)
-
-        self.conv1 = nn.Conv2d(out_channels, 6 * out_channels, kernel_size=1, stride=1, padding=0, bias=False)
-        self.conv2 = nn.Conv2d(6 * out_channels, 6 * out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.conv3 = nn.Conv2d(6 * out_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.depth_conv = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels, kernel_size=5, stride=1, padding=2, bias=False, groups=in_channels),
+            nn.BatchNorm2d(in_channels),
+            nn.ReLU()
+        )
+        self.point_conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU()
+        )
 
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.expand(x)
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        return x
-
-
-class BottleneckBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int):
-        super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, 2 * in_channels, kernel_size=1, stride=1, padding=0, bias=False)
-        self.conv2 = nn.Conv2d(2 * in_channels, 2 * in_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.conv3 = nn.Conv2d(2 * in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
-
-    def __call__(self, x: torch.Tensor):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
+        x = self.conv(x)
+        x = self.upsampler(x)
         return x
 
 
@@ -46,52 +35,48 @@ class DepthNet(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.upsampling1 = UpsamplingBlock(1024, 2)
-        self.upsampling2 = UpsamplingBlock(640, 2)
-        self.upsampling3 = UpsamplingBlock(320, 2)
+        self.upsample1 = UpsamplingBlock(1024)
+        self.upsample2 = UpsamplingBlock(512)
+        self.upsample3 = UpsamplingBlock(256)
+        self.upsample4 = UpsamplingBlock(128)
+        self.upsample5 = UpsamplingBlock(64)
 
-        self.bottleneck1 = nn.Sequential(
-            BottleneckBlock(256, 128),
-            BottleneckBlock(128, 128)
+        self.pred_layer = nn.Sequential(
+            nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.BatchNorm2d(1),
+            nn.ReLU()
         )
 
-        self.bottleneck2 = nn.Sequential(
-            BottleneckBlock(160, 128),
-            BottleneckBlock(128, 64)
-        )
-
-        self.bottleneck3 = nn.Sequential(
-            BottleneckBlock(80, 64),
-            BottleneckBlock(64, 32)
-        )
-
-        self.prediction1 = nn.Conv2d(128, 1, kernel_size=1, padding=1, bias=False, stride=1)
-        self.prediction2 = nn.Conv2d(64, 1, kernel_size=1, padding=1, bias=False, stride=1)
-        self.prediction3 = nn.Conv2d(32, 1, kernel_size=1, padding=1, bias=False, stride=1)
+        self.upsample1.apply(nn.init.normal)
+        self.upsample2.apply(nn.init.normal)
+        self.upsample3.apply(nn.init.normal)
+        self.upsample4.apply(nn.init.normal)
+        self.upsample5.apply(nn.init.normal)
+        self.pred_layer.apply(nn.init.normal)
 
     def __call__(self, features: List[torch.Tensor]):
         """
         Performs multi-scale upsampling to produce a depth map
         """
-        predictions = []
+        disparity1 = self.upsample1(features[0])
+        disparity1 = F.interpolate(disparity1, size=(19, 19), mode='nearest')
 
-        disparity1 = self.upsampling1(features[0])
-        disparity1 = disparity1[..., 1:, 1:]
-        disparity1 = self.bottleneck1(disparity1)
-        predictions.append(self.prediction1(disparity1))
-        disparity1 = torch.cat([disparity1, features[1]], dim=1)
+        disparity2 = self.upsample2(disparity1)
+        disparity2 = F.interpolate(disparity2, scale_factor=2, mode='nearest')
+        disparity2 = disparity2 + features[1]
 
-        disparity2 = self.upsampling2(disparity1)
-        disparity2 = self.bottleneck2(disparity2)
-        predictions.append(self.prediction2(disparity2))
-        disparity2 = torch.cat([disparity2, features[2]], dim=1)
+        disparity3 = self.upsample3(disparity2)
+        disparity3 = F.interpolate(disparity3, size=(75, 75), mode='nearest')
+        disparity3 = disparity3 + features[2]
 
-        disparity3 = self.upsampling3(disparity2)
-        disparity3 = self.bottleneck3(disparity3)
+        disparity4 = self.upsample4(disparity3)
+        disparity4 = F.interpolate(disparity4, scale_factor=2, mode='nearest')
+        disparity4 = disparity4 + features[3]
 
-        predictions.append(self.prediction3(disparity3))
+        disparity5 = self.upsample5(disparity4)
+        disparity5 = F.interpolate(disparity5, scale_factor=2, mode='nearest')
 
-        return predictions
+        return self.pred_layer(disparity5)
 
 
 class IntegratedModel(nn.Module):
@@ -106,7 +91,7 @@ class IntegratedModel(nn.Module):
         self.extras = extras
         self.location_headers = location_headers
         self.class_headers = class_headers
-        self.depth_source_layers = [5, 11, 13]
+        self.depth_source_layers = [1, 3, 5, 13]
         self.upsampling = DepthNet()
         self._test = is_test
         self._config = config

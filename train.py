@@ -66,7 +66,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         {'params': ssd.extras.parameters(), 'lr': 0.01},
         {'params': ssd.class_headers.parameters(), 'lr': 0.01},
         {'params': ssd.location_headers.parameters(), 'lr': 0.01},
-        {'params': ssd.upsampling.parameters(), 'lr': 0.0001}
+        {'params': ssd.upsampling.parameters(), 'lr': 0.001}
     ]
 
     optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005, nesterov=True)
@@ -101,7 +101,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
 
             optimizer.zero_grad()
 
-            confidences, locations, disparities = ssd(images)
+            confidences, locations, disparity = ssd(images)
 
             regression_loss, classification_loss, mask = criterion.forward(confidences, locations, labels, gt_locations)
             with torch.no_grad():
@@ -115,35 +115,14 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                     prediction_count[item.item()] += prediction_counts[j].item()
 
             gt_disparity = gt_disparity
-            disparity_targets = []
 
-            for pred in disparities:
-                resize_shape = pred.shape[-2:]
-                scaled_targets = []
-                for img in gt_disparity:
-                    scaled_disparity_target = cv2.resize(img.cpu().squeeze().numpy(), (resize_shape[1], resize_shape[0]))
-                    scaled_targets.append(scaled_disparity_target)
-                scaled_targets = torch.from_numpy(np.array(scaled_targets))
-                if pred.is_cuda:
-                    scaled_targets = scaled_targets.cuda()
-                disparity_targets.append(scaled_targets)
-
-            disparity_losses = []
-            
-            for k, pred in enumerate(disparities):
-                disparity_losses.append(torch.sqrt(disparity_criterion(pred.squeeze() * 127, disparity_targets[k] * 127)))
-
-            disparity_loss = torch.tensor(0.0)
-            if gt_disparity.is_cuda:
-                disparity_loss = disparity_loss.cuda()
-            for item in disparity_losses:
-                disparity_loss += item
-            print("Loss:", disparity_losses)
+            disparity_loss = torch.sqrt(disparity_criterion(disparity * 127, gt_disparity * 127))
+            print("Loss:", disparity_loss.item())
 
             loss = regression_loss + classification_loss + disparity_loss
             loss.backward()
-            print(ssd.upsampling.upsampling3.conv1.weight.grad.max())
-            print(ssd.upsampling.upsampling3.conv1.weight.grad.min())
+            # print(ssd.upsampling.upsampling3.conv1.weight.grad.max())
+            # print(ssd.upsampling.upsampling3.conv1.weight.grad.min())
             # print(ssd.upsampling.prediction[0].weight.grad.max())
             # print(ssd.class_headers[0].weight.grad.max())
             optimizer.step()
