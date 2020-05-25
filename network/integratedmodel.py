@@ -47,42 +47,51 @@ class DepthNet(nn.Module):
         super().__init__()
 
         self.upsampling1 = UpsamplingBlock(1024, 2)
-        self.upsampling2 = UpsamplingBlock(768, 2)
-        self.upsampling3 = UpsamplingBlock(448, 2)
+        self.upsampling2 = UpsamplingBlock(640, 2)
+        self.upsampling3 = UpsamplingBlock(320, 2)
 
         self.bottleneck1 = nn.Sequential(
-                BottleneckBlock(256, 256),
+            BottleneckBlock(256, 128),
+            BottleneckBlock(128, 128)
         )
 
         self.bottleneck2 = nn.Sequential(
-                BottleneckBlock(192, 192),
+            BottleneckBlock(160, 128),
+            BottleneckBlock(128, 64)
         )
 
         self.bottleneck3 = nn.Sequential(
-                BottleneckBlock(112, 112),
+            BottleneckBlock(80, 64),
+            BottleneckBlock(64, 32)
         )
 
-        self.prediction = nn.Conv2d(112, 1, kernel_size=3, padding=1, bias=False, stride=1)
+        self.prediction1 = nn.Conv2d(128, 1, kernel_size=1, padding=1, bias=False, stride=1)
+        self.prediction2 = nn.Conv2d(64, 1, kernel_size=1, padding=1, bias=False, stride=1)
+        self.prediction3 = nn.Conv2d(32, 1, kernel_size=1, padding=1, bias=False, stride=1)
 
     def __call__(self, features: List[torch.Tensor]):
         """
         Performs multi-scale upsampling to produce a depth map
         """
+        predictions = []
 
         disparity1 = self.upsampling1(features[0])
         disparity1 = disparity1[..., 1:, 1:]
         disparity1 = self.bottleneck1(disparity1)
+        predictions.append(self.prediction1(disparity1))
         disparity1 = torch.cat([disparity1, features[1]], dim=1)
 
         disparity2 = self.upsampling2(disparity1)
         disparity2 = self.bottleneck2(disparity2)
+        predictions.append(self.prediction2(disparity2))
         disparity2 = torch.cat([disparity2, features[2]], dim=1)
 
         disparity3 = self.upsampling3(disparity2)
         disparity3 = self.bottleneck3(disparity3)
-        out = self.prediction(disparity3)
 
-        return out
+        predictions.append(self.prediction3(disparity3))
+
+        return predictions
 
 
 class IntegratedModel(nn.Module):
