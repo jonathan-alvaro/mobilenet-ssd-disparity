@@ -63,6 +63,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     disparity_criterion = torch.nn.MSELoss()
 
     ssd_params = [
+        {'params': ssd.extractor.parameters(), 'lr': 0.001},
         {'params': ssd.extras.parameters(), 'lr': 0.01},
         {'params': ssd.class_headers.parameters(), 'lr': 0.01},
         {'params': ssd.location_headers.parameters(), 'lr': 0.01},
@@ -114,7 +115,11 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                 for j, item in enumerate(prediction_labels):
                     prediction_count[item.item()] += prediction_counts[j].item()
 
-            gt_disparity = gt_disparity
+            disparity = disparity.squeeze()
+            print(disparity.max())
+            print(disparity.min())
+            print(gt_disparity.max())
+            print(gt_disparity.min())
 
             disparity_loss = torch.sqrt(disparity_criterion(disparity * 127, gt_disparity * 127))
             print("Loss:", disparity_loss.item())

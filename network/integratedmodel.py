@@ -26,9 +26,16 @@ class UpsamplingBlock(nn.Module):
         )
 
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.conv(x)
-        x = self.upsampler(x)
+        x = self.depth_conv(x)
+        x = self.point_conv(x)
         return x
+
+
+def weights_init(layer):
+    if isinstance(layer, nn.Conv2d):
+        nn.init.normal_(layer.weight)
+    elif isinstance(layer, nn.BatchNorm2d):
+        layer.weight.data.fill_(1)
 
 
 class DepthNet(nn.Module):
@@ -47,12 +54,12 @@ class DepthNet(nn.Module):
             nn.ReLU()
         )
 
-        self.upsample1.apply(nn.init.normal)
-        self.upsample2.apply(nn.init.normal)
-        self.upsample3.apply(nn.init.normal)
-        self.upsample4.apply(nn.init.normal)
-        self.upsample5.apply(nn.init.normal)
-        self.pred_layer.apply(nn.init.normal)
+        self.upsample1.apply(weights_init)
+        self.upsample2.apply(weights_init)
+        self.upsample3.apply(weights_init)
+        self.upsample4.apply(weights_init)
+        self.upsample5.apply(weights_init)
+        self.pred_layer.apply(weights_init)
 
     def __call__(self, features: List[torch.Tensor]):
         """
