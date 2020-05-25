@@ -52,10 +52,12 @@ class DepthNet(nn.Module):
 
         self.bottleneck1 = nn.Sequential(
             BottleneckBlock(256, 128),
+            BottleneckBlock(128, 128)
         )
 
         self.bottleneck2 = nn.Sequential(
-            BottleneckBlock(160, 64),
+            BottleneckBlock(160, 128),
+            BottleneckBlock(128, 64)
         )
 
         self.bottleneck3 = nn.Sequential(
