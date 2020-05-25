@@ -5,6 +5,7 @@ from torch import nn
 class BerHuLoss(nn.Module):
     def forward(self, prediction: torch.Tensor, target: torch.Tensor):
         prediction = prediction.squeeze()
+        target[target > 50] = 50
 
         diff = prediction - target
         abs_diff = diff.abs()

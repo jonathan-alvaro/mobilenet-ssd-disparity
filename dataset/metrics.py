@@ -10,6 +10,7 @@ def relative_absolute_error(prediction: torch.Tensor, target: torch.Tensor):
         target = target.cuda()
     divisor = target.clone()
     divisor[divisor <= 0] = 1
+    divisor[divisor > 50] = 50
 
     abs_diff = (prediction - target).abs()
     error = (abs_diff / divisor).mean()

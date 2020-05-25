@@ -17,7 +17,7 @@ from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model, calculate_map
 
 
-def eval(config: dict, model_path='checkpoints/model_epoch10.pth'):
+def eval(config: dict, model_path='checkpoints/model_epoch15.pth'):
     ssd = build_model(config, is_test=True)
     ssd.load_state_dict(torch.load(model_path))
     ssd.train(False)
@@ -61,13 +61,13 @@ def eval(config: dict, model_path='checkpoints/model_epoch10.pth'):
         print("Prediction Min:", disparity.min())
         print("Prediction MeaN:", disparity.mean())
         cv2.imwrite('prediction/{}_disparity_raw.png'.format(i), disparity)
-        plt.imsave('prediction/{}_disparity.png'.format(i), disparity, vmin=0, vmax=126, cmap='magma')
+        plt.imsave('prediction/{}_disparity.png'.format(i), disparity, vmin=0, vmax=50, cmap='magma')
 
         gt_disparity = val_set.get_disparity(i)[0]
         gt_disparity = gt_disparity.numpy()
         gt_disparity = cv2.resize(gt_disparity, (300, 300))
         cv2.imwrite('prediction/{}_target_raw.png'.format(i), gt_disparity)
-        plt.imsave('prediction/{}_target.png'.format(i), gt_disparity, vmin=0, vmax=126, cmap='magma')
+        plt.imsave('prediction/{}_target.png'.format(i), gt_disparity, vmin=0, vmax=50, cmap='magma')
         
 
     print(labels)

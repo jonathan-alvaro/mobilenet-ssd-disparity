@@ -118,6 +118,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             disparity = disparity.squeeze()
             print(disparity.max())
             print(disparity.min())
+            print("Predictions above 10:", len(disparity[disparity > (10 / 127)].flatten()))
             print(gt_disparity.max())
             print(gt_disparity.min())
 
