@@ -17,7 +17,7 @@ from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model, calculate_map
 
 
-def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
+def eval(config: dict, model_path='checkpoints/model_epoch10.pth'):
     ssd = build_model(config, is_test=True)
     ssd.load_state_dict(torch.load(model_path))
     ssd.train(False)
@@ -57,9 +57,9 @@ def eval(config: dict, model_path='checkpoints/model_epoch5.pth'):
         test_image.save('prediction/{}.jpg'.format(i))
 
         disparity = disparity.squeeze().cpu().numpy() * 127
-        print(disparity.max())
-        print(disparity.min())
-        print(disparity.mean())
+        print("PRediction Max:", disparity.max())
+        print("Prediction Min:", disparity.min())
+        print("Prediction MeaN:", disparity.mean())
         cv2.imwrite('prediction/{}_disparity_raw.png'.format(i), disparity)
         plt.imsave('prediction/{}_disparity.png'.format(i), disparity, vmin=0, vmax=126, cmap='magma')
 

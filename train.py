@@ -59,8 +59,8 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             torch.load(os.path.join(checkpoint_folder, "{}_epoch{}.pth".format(model_name, start_epoch - 1))))
 
     criterion = MultiBoxLoss(0.5, 0, 1.5, config)
-    # disparity_criterion = BerHuLoss()
-    disparity_criterion = torch.nn.MSELoss()
+    disparity_criterion = BerHuLoss()
+    # disparity_criterion = torch.nn.MSELoss()
 
     ssd_params = [
         {'params': ssd.extractor.parameters(), 'lr': 0.001},
@@ -121,7 +121,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
             print(gt_disparity.max())
             print(gt_disparity.min())
 
-            disparity_loss = torch.sqrt(disparity_criterion(disparity * 127, gt_disparity * 127))
+            disparity_loss = disparity_criterion(disparity * 127, gt_disparity * 127)
             print("Loss:", disparity_loss.item())
 
             loss = regression_loss + classification_loss + disparity_loss

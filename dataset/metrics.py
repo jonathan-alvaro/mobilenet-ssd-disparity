@@ -8,13 +8,13 @@ from dataset.count_classes import class_count
 def relative_absolute_error(prediction: torch.Tensor, target: torch.Tensor):
     if prediction.is_cuda:
         target = target.cuda()
-    abs_diff = (prediction - target) ** 2
-    abs_diff = torch.sqrt(abs_diff.flatten().sum())
+    divisor = target.clone()
+    divisor[divisor <= 0] = 1
 
-    divisor = target.flatten() ** 2
-    divisor = torch.sqrt(divisor.sum())
+    abs_diff = (prediction - target).abs()
+    error = (abs_diff / divisor).mean()
 
-    return (abs_diff / divisor).item()
+    return error.item()
 
 
 def pixel_miss_error(prediction: torch.Tensor, target: torch.Tensor, threshold: float = 3.0):
