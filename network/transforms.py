@@ -304,8 +304,6 @@ class Scale:
 
     def __call__(self, img: np.ndarray, boxes: Optional[torch.Tensor] = None,
                  labels: Optional[torch.Tensor] = None, disparity: Optional[np.ndarray] = None):
-        if disparity is not None:
-            disparity = disparity / 127
         return (img - np.array([127, 127, 127])) / np.array([128]), boxes, labels, disparity
 
 

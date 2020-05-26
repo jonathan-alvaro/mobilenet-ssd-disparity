@@ -67,7 +67,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
         {'params': ssd.extras.parameters(), 'lr': 0.01},
         {'params': ssd.class_headers.parameters(), 'lr': 0.01},
         {'params': ssd.location_headers.parameters(), 'lr': 0.01},
-        {'params': ssd.upsampling.parameters(), 'lr': 0.001}
+        {'params': ssd.upsampling.parameters(), 'lr': 0.1, 'weight_decay': 0.00001}
     ]
 
     optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005, nesterov=True)
@@ -116,13 +116,13 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
                     prediction_count[item.item()] += prediction_counts[j].item()
 
             disparity = disparity.squeeze()
+            gt_disparity[gt_disparity > 50] = 50
             print(disparity.max())
             print(disparity.min())
-            print("Predictions above 10:", len(disparity[disparity > (10 / 127)].flatten()))
             print(gt_disparity.max())
             print(gt_disparity.min())
 
-            disparity_loss = disparity_criterion(disparity * 127, gt_disparity * 127)
+            disparity_loss = disparity_criterion(disparity, gt_disparity)
             print("Loss:", disparity_loss.item())
 
             loss = regression_loss + classification_loss + disparity_loss

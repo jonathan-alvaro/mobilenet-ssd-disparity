@@ -57,8 +57,7 @@ def eval_model(dataset: CityscapesDataset, n: int, model: Predictor, csv_file: s
 
         boxes, labels, probs, disparity, indices = model.predict(img)
 
-        disparity = disparity * 127
-        gt_disparity = gt_disparity * 127
+        gt_disparity[gt_disparity > 50] = 50
 
         rae.append(relative_absolute_error(disparity, gt_disparity))
         pixel_miss.append(pixel_miss_error(disparity, gt_disparity))
