@@ -14,6 +14,7 @@ class BerHuLoss(nn.Module):
         cutoff_mask = (abs_diff > c)
         abs_diff[cutoff_mask] += c ** 2
         abs_diff[cutoff_mask] /= 2 * c
-        abs_diff = abs_diff[target != 0]
+        abs_diff[target > 10] *= 4
+        abs_diff[target >= 50] /= 4
 
         return abs_diff.flatten().mean()
