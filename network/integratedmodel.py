@@ -19,6 +19,11 @@ class UpsamplingBlock(nn.Module):
             nn.BatchNorm2d(in_channels),
             nn.ReLU()
         )
+        self.intermediate_conv = nn.Sequential(
+                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride= 1, padding=1, bias=False),
+                nn.BatchNorm2d(in_channels),
+                nn.ReLU()
+        )
         self.point_conv = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(out_channels),
@@ -27,6 +32,7 @@ class UpsamplingBlock(nn.Module):
 
     def __call__(self, x: torch.Tensor) -> torch.Tensor:
         x = self.depth_conv(x)
+        x = self.intermediate_conv(x)
         x = self.point_conv(x)
         return x
 

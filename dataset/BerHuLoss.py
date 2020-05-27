@@ -12,8 +12,8 @@ class BerHuLoss(nn.Module):
         c = abs_diff.max().item() / 5
         cutoff_mask = (abs_diff > c)
         weights = torch.ones(abs_diff.shape)
-        weights[(target > 10) * (target < 50)] *= 2
-        #weights[(target > 10) & (target < 50)] *= 2
+        # weights[(target > 10) * (target < 50)] *= 2
+        # weights[(target > 10) & (target < 50)] *= 2
         if prediction.is_cuda:
             weights = weights.cuda()
         abs_diff[cutoff_mask] += c ** 2
