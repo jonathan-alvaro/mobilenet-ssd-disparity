@@ -17,7 +17,7 @@ from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model, calculate_map
 
 
-def eval(config: dict, model_path='checkpoints/model_epoch20.pth'):
+def eval(config: dict, model_path='checkpoints/model_epoch10.pth'):
     ssd = build_model(config, is_test=True)
     ssd.load_state_dict(torch.load(model_path))
     ssd.train(False)
@@ -33,7 +33,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch20.pth'):
 
     target_transform = MatchPrior(priors, config)
 
-    val_set = CityscapesDataset(config, 'dataset/val', None, data_transform, target_transform, True)
+    val_set = CityscapesDataset(config, 'dataset/train', None, data_transform, target_transform, True)
 
     arg1 = int(sys.argv[1])
 
