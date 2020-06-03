@@ -34,6 +34,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch100.pth'):
     target_transform = MatchPrior(priors, config)
 
     val_set = CityscapesDataset(config, 'dataset/val', None, data_transform, target_transform, True)
+    raw_set = CityscapesDataset(config, 'dataset/val', None, data_transform, None, True)
 
     arg1 = int(sys.argv[1])
 
@@ -42,6 +43,9 @@ def eval(config: dict, model_path='checkpoints/model_epoch100.pth'):
     for i in range(arg1):
         test_image = val_set.get_image(i)
         test_image = test_image.resize((300, 300))
+
+        _, raw_boxes, raw_labels, _ = raw_set[i]
+        raw_image = raw_set.get_image(i)
 
         img,_, _, _ = val_set[i]
         img = img.cuda()
@@ -62,10 +66,18 @@ def eval(config: dict, model_path='checkpoints/model_epoch100.pth'):
             color = class_colors[labels[j]]
             drawer.rectangle((top_left, bottom_right), width=3, outline=color)
 
+        drawer = Draw(raw_image)
+        for j in range(raw_boxes.shape[0]):
+            top_left = tuple(raw_boxes[j][:2].numpy().flatten())
+            bottom_right = tuple(raw_boxes[j][2:].numpy().flatten())
+            color = class_colors[raw_labels[j]]
+            drawer.rectangle((top_left, bottom_right), width=3, outline=color)
+
         test_image.save('prediction/{}.jpg'.format(i))
+        raw_image.save('prediction/{}_object_target.jpg'.format(i))
 
         disparity = disparity.squeeze().cpu().numpy()
-        print("PRediction Max:", disparity.max())
+        print("Prediction Max:", disparity.max())
         print("Prediction Min:", disparity.min())
         print("Prediction MeaN:", disparity.mean())
         cv2.imwrite('prediction/{}_disparity_raw.png'.format(i), disparity)
