@@ -22,6 +22,9 @@ class UpsamplingBlock(nn.Module):
         self.intermediate_conv = nn.Sequential(
                 nn.Conv2d(in_channels, in_channels, kernel_size=3, stride= 1, padding=1, bias=False),
                 nn.BatchNorm2d(in_channels),
+                nn.ReLU(),
+                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(in_channels),
                 nn.ReLU()
         )
         self.point_conv = nn.Sequential(

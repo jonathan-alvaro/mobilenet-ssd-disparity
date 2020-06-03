@@ -71,7 +71,7 @@ def train_ssd(start_epoch: int, end_epoch: int, config: dict, use_gpu: bool = Tr
     ]
 
     optimizer = SGD(ssd_params, lr=0.001, momentum=0.9, weight_decay=0.0005, nesterov=True)
-    lr_scheduler = MultiStepLR(optimizer, milestones=[15, 30, 45], gamma=0.3)
+    lr_scheduler = MultiStepLR(optimizer, milestones=[20, 45, 75], gamma=0.3)
     if os.path.isfile(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))):
         optimizer.load_state_dict(
             torch.load(os.path.join(checkpoint_folder, "optimizer_epoch{}.pth".format(start_epoch - 1))))

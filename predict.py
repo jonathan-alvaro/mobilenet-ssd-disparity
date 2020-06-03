@@ -17,7 +17,7 @@ from network.mobilenet_ssd_config import network_config, priors
 from train_utils import build_model, calculate_map
 
 
-def eval(config: dict, model_path='checkpoints/model_epoch30.pth'):
+def eval(config: dict, model_path='checkpoints/model_epoch100.pth'):
     ssd = build_model(config, is_test=True)
     ssd.load_state_dict(torch.load(model_path))
     ssd.train(False)
@@ -33,9 +33,11 @@ def eval(config: dict, model_path='checkpoints/model_epoch30.pth'):
 
     target_transform = MatchPrior(priors, config)
 
-    val_set = CityscapesDataset(config, 'dataset/train', None, data_transform, target_transform, True)
+    val_set = CityscapesDataset(config, 'dataset/val', None, data_transform, target_transform, True)
 
     arg1 = int(sys.argv[1])
+
+    total_pred_time = 0
 
     for i in range(arg1):
         test_image = val_set.get_image(i)
@@ -44,15 +46,21 @@ def eval(config: dict, model_path='checkpoints/model_epoch30.pth'):
         img,_, _, _ = val_set[i]
         img = img.cuda()
         
+        start = time.time()
         boxes, labels, conf, disparity, _ = net.predict(img)
+        print("Prediction time: {:.2f}".format(time.time() - start))
+        total_pred_time += time.time() - start
         boxes = boxes.cpu()
     
         drawer = Draw(test_image)
+
+        class_colors = (None, (255, 0, 0), (0, 255, 0))
         
         for j in range(boxes.shape[0]):
             top_left = tuple(boxes[j][:2].numpy().flatten())
             bottom_right = tuple(boxes[j][2:].numpy().flatten())
-            drawer.rectangle((top_left, bottom_right), width=5)
+            color = class_colors[labels[j]]
+            drawer.rectangle((top_left, bottom_right), width=3, outline=color)
 
         test_image.save('prediction/{}.jpg'.format(i))
 
@@ -69,6 +77,7 @@ def eval(config: dict, model_path='checkpoints/model_epoch30.pth'):
         cv2.imwrite('prediction/{}_target_raw.png'.format(i), gt_disparity)
         plt.imsave('prediction/{}_target.png'.format(i), gt_disparity, vmin=0, vmax=50, cmap='magma')
         
+    print("Average prediction time: {:.5f}".format(total_pred_time / arg1))
 
     print(labels)
     test_image.save("predict.jpg")
